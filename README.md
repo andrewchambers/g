@@ -4,15 +4,16 @@ A new systems programming language - WIP
 
 I am a big fan of both Go and C, however both have problems. Go aims at servers,
 but there is a niche for something better than C, but still simple, portable, and minimal with overhead.
-I think G can fill this.
+I think G can fill this gap.
 
 C
 * Hard to parse with alot of unnecessary syntax.
 * Alot of undefined behaviour and funny things like implicit casts.
 * Compiles are slow due to preprocessing
+
 Go
 * Requires GC and runtime.
-* Not suitable for embedded applications
+* Less suitable for embedded applications due to runtime and binary requirements..
 
 G aims to solves these problems.
 * Easy to parse syntax, similar to Go.
@@ -41,4 +42,3 @@ func main() int {
 * Tagged unions supported explicitly
 * No implicit casts like go.
 * Less memory safety than go - can access arbitrary addresses.
-* 
