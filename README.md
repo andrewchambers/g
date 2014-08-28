@@ -42,3 +42,4 @@ func main() int {
 * Tagged unions supported explicitly
 * No implicit casts like go.
 * Less memory safety than go - can access arbitrary addresses.
+* Directly output LLVM text assembly.

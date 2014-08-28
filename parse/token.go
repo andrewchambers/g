@@ -1,12 +1,14 @@
 package parse
 
+type TokenKind int
+
 type Token struct {
     Kind TokenKind
     Span FileSpan
 }
 
 type FilePos struct {
-    Path String
+    Path string
     Pos int
 }
 

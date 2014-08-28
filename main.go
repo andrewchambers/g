@@ -1,12 +1,13 @@
 package main
 
 import (
+    "os"
     "flag"
     "fmt"
-    "parse"
+    "runtime/pprof"
+    "io"
+    //"github.com/andrewchambers/g/parse"
 )
-
-
 
 func printVersion() {
 	fmt.Println("g version 0.01")
@@ -16,8 +17,7 @@ func printUsage() {
 	printVersion()
 	fmt.Println()
 	fmt.Println("This software is a g compiler - https://github.com/andrewchambers/g")
-	fmt.Println("It was created with the goals of being the small and hackable.")
-	fmt.Println("It is hopefully a playground for the language design")
+	fmt.Println("It emits text llvm bytecode.")
 	fmt.Println()
 	fmt.Println("Software by Andrew Chambers 2014 - andrewchamberss@gmail.com")
 	fmt.Println()
@@ -73,13 +73,15 @@ flag.Usage = printUsage
 		}
 	}
 
-	if *preprocessOnly {
-		//preprocessFile(input, output)
-	} else if *tokenizeOnly {
-		//tokenizeFile(input, output)
+	if *tokenizeOnly {
+		tokenizeFile(input, output)
 	} else if *parseOnly {
 		//parseFile(input, output)
 	} else {
 		//compileFile(input, nil, output)
 	}
+}
+
+func tokenizeFile(sourceFile string, out io.WriteCloser) {
+
 }
