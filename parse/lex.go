@@ -2,11 +2,12 @@ package parse
 
 import (
     "io"
+    "bufio"
 )
 
 type lexer struct {
     // Marked token start position in current file.
-    markedPos *FilePos
+    markedPos FilePos
     // The io source the lexer is reading for.
     brdr *bufio.Reader
     // Current position information
@@ -15,36 +16,32 @@ type lexer struct {
     // Path of current file (used for errors and other position info).
     path string
     // Output only channel for sending tokens.
-    stream chan *Token
+    out chan *Token
 }
 
 // Lexers the reader in a goroutine.
 // The goroutine must be read until completion or error.
-// Lexing errors will call onError.
-func Lex(path string, r io.Reader, onError func (error,FilePos)) chan *Token {
-    
+// The Error token is returned on lex error.
+func Lex(path string, r io.Reader) chan *Token {
+    out := make(chan *Token, 1024)
+    return out
 }
 
 // Saves the current lexer position in markedPos.
-func (l *Lexer) mark() {
+func (l *lexer) mark() {
     l.markedPos = l.currentPos()
 }
 
-func (l *Lexer) currentPos() *FilePos {
-    return &FilePos{l.path,l.curLine,l.curCol}
+func (l *lexer) currentPos() FilePos {
+    return FilePos{l.path,l.curLine,l.curCol}
 }
 
 // Saves the current lexer position in markedPos.
-func (l *Lexer) sendTok(k TokenKind,val string) {
-    start := l.markedPos
-    end := l.currentPos()
-    span := &FileSpan{start,end}
-    return &Token{k,val,span}
+func (l *lexer) sendTok(k TokenKind,val string) {
+    l.out <- &Token{k,val,FileSpan{l.markedPos,l.currentPos()}}
 }
 
-
-
-func (l *Lexer) lex() {
+func (l *lexer) lex() {
     for {
     
     }

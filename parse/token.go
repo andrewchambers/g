@@ -2,6 +2,9 @@ package parse
 
 type TokenKind int
 
+const (
+    TOK_ERROR = iota
+)
 
 // The type representing a G lexical token.
 type Token struct {

@@ -6,7 +6,7 @@ import (
     "fmt"
     "runtime/pprof"
     "io"
-    //"github.com/andrewchambers/g/parse"
+    "github.com/andrewchambers/g/parse"
 )
 
 func printVersion() {
@@ -83,5 +83,23 @@ flag.Usage = printUsage
 }
 
 func tokenizeFile(sourceFile string, out io.WriteCloser) {
-
+	defer out.Close()
+	f, err := os.Open(sourceFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open source file %s for lexing: %s\n", sourceFile, err)
+		os.Exit(1)
+	}
+	tokChan := parse.Lex(sourceFile, f)
+	for tok := range tokChan {
+		if tok == nil {
+			return
+		}
+		if tok.Kind == parse.TOK_ERROR {
+			fmt.Fprintln(os.Stderr, tok.Val)
+			os.Exit(1)
+		}
+		//fmt.Fprintf(out, "%s:%s:%d:%d\n", tok.Kind, tok.Val, tok.Pos.Line, tok.Pos.Col)
+	}
 }
+
+
