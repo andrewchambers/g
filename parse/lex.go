@@ -41,6 +41,32 @@ func (l *lexer) sendTok(k TokenKind, val string) {
 	l.out <- &Token{k, val, FileSpan{l.markedPos, l.currentPos()}}
 }
 
+// Panics with aborting error type, does not return
+func (l *lexer) lexError(message string) {
+    
+}
+
+// Returns the next rune, and a bool representing eof
+func (l *lexer) readRune() (rune, bool) {
+	r, _, err := l.brdr.ReadRune()
+	if err != nil {
+		if err == io.EOF {
+			return 0, true
+		}
+		l.lexError(err.Error())
+	}
+	switch r {
+	case '\n':
+	    l.curCol = 1
+		l.curLine += 1
+	case '\t':
+		l.curCol += l.curCol + (4 - ((l.curCol-1) % 4))
+	default:
+		l.curCol += 1
+	}
+	return r, false
+}
+
 func (l *lexer) lex() {
 	for {
 
