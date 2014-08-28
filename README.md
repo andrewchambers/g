@@ -43,3 +43,5 @@ func main() int {
 * No implicit casts like go.
 * Less memory safety than go - can access arbitrary addresses.
 * Directly output LLVM text assembly.
+* support for inline assembly
+* := syntax needs to be implemented later.
