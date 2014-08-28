@@ -5,6 +5,9 @@ import (
 	"io"
 )
 
+// breakout is a dummy type just used for leaving the lexing loop with panic.
+type breakout struct {}
+
 type lexer struct {
 	// Marked token start position in current file.
 	markedPos FilePos
@@ -68,7 +71,24 @@ func (l *lexer) readRune() (rune, bool) {
 }
 
 func (l *lexer) lex() {
-	for {
+	//This recovery happens if lexError is called.
+	defer func() {
+		if e := recover(); e != nil {
+			_ = e.(*breakout) // Will re-panic if not a breakout.
+		}
 
+	}()
+	defer close(l.out)
+	
+	for {
+		l.mark()
+	    first, eof := l.readRune()
+		if eof {
+		    break
+		}
+		switch first {
+		
+		}
 	}
+    
 }
