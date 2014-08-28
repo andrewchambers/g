@@ -1,12 +1,12 @@
 package main
 
 import (
-    "os"
-    "flag"
-    "fmt"
-    "runtime/pprof"
-    "io"
-    "github.com/andrewchambers/g/parse"
+	"flag"
+	"fmt"
+	"github.com/andrewchambers/g/parse"
+	"io"
+	"os"
+	"runtime/pprof"
 )
 
 func printVersion() {
@@ -25,8 +25,8 @@ func printUsage() {
 }
 
 func main() {
-flag.Usage = printUsage
-	
+	flag.Usage = printUsage
+
 	tokenizeOnly := flag.Bool("T", false, "Tokenize only (For debugging).")
 	parseOnly := flag.Bool("A", false, "Print AST (For debugging).")
 	doProfiling := flag.Bool("P", false, "Profile the compiler (For debugging).")
@@ -101,5 +101,3 @@ func tokenizeFile(sourceFile string, out io.WriteCloser) {
 		//fmt.Fprintf(out, "%s:%s:%d:%d\n", tok.Kind, tok.Val, tok.Pos.Line, tok.Pos.Col)
 	}
 }
-
-
