@@ -42,4 +42,5 @@ func main() int {
 * Less memory safety than go - can access arbitrary addresses.
 * Directly output LLVM text assembly.
 * support for inline assembly
-* := syntax needs to be implemented later.
+* := syntax? it does save alot of typing.
+* Bounds checking on arrays? optional or not?
