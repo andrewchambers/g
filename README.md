@@ -1,27 +1,18 @@
 # G programming language
 
-A new systems programming language - WIP
+A new simple systems programming language - WIP
 
-I am a big fan of both Go and C, however both have problems. Go aims at servers,
-but there is a niche for something better than C, but still simple, portable, and minimal with overhead.
-I think G can fill this gap.
+I am a big fan of both Go and C, however both have problems.  You would never  write an OS in Go, and C has alot of legacy quirks.
 
-C
-* Hard to parse with alot of unnecessary syntax.
-* Alot of undefined behaviour and funny things like implicit casts.
-* Compiles are slow due to preprocessing
-
-Go
-* Requires GC and runtime.
-* Less suitable for embedded applications due to runtime and binary requirements..
 
 G aims to solves these problems.
-* Easy to parse syntax, similar to Go.
-* Complicated parts of C removed.
+* Easy to parse syntax which isn't context sensitive, similar to Go.
+* Unnecessarily complicated and legacy parts of C removed.
 * No garbage collector and minimal runtime like C.
-* abi compatible with C.
+* ABI compatible with C.
+* Inline assembly.
 
-Examples:
+Example:
 
 ```
 package main
