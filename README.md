@@ -12,6 +12,7 @@ G aims to solves these problems.
 * Inline assembly.
 * Zero initialized variables.
 * Packages, not headers.
+* Multiple return values from functions
 
 G is not trying to compete with big languages like rust or c++. It just trying to be as close to C as possible while removing bad features.
 
