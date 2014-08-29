@@ -2,8 +2,7 @@
 
 A new simple systems programming language - WIP
 
-I am a big fan of both Go and C, however both have problems.  You would never  write an OS in Go, and C has alot of legacy quirks.
-
+I am a big fan of both Go and C, however both have problems.  You would never  write an OS in Go, and C has alot of legacy quirks and design descisions that may not be good in hindsight.
 
 G aims to solves these problems.
 * Easy to parse syntax which isn't context sensitive, similar to Go.
@@ -11,6 +10,10 @@ G aims to solves these problems.
 * No garbage collector and minimal runtime like C.
 * ABI compatible with C.
 * Inline assembly.
+* Zero initialized variables.
+* Packages, not headers.
+
+G is not trying to compete with big languages like rust or c++. It just trying to be as close to C as possible while removing bad features.
 
 Example:
 
