@@ -101,3 +101,14 @@ func tokenizeFile(sourceFile string, out io.WriteCloser) {
 		//fmt.Fprintf(out, "%s:%s:%d:%d\n", tok.Kind, tok.Val, tok.Pos.Line, tok.Pos.Col)
 	}
 }
+
+func parseFile(sourceFile string, out io.WriteCloser) {
+	defer out.Close()
+	f, err := os.Open(sourceFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open source file %s for lexing: %s\n", sourceFile, err)
+		os.Exit(1)
+	}
+	tokChan := parse.Lex(sourceFile, f)
+	parse.Parse(tokChan)
+}

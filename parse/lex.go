@@ -2,6 +2,7 @@ package parse
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 )
 
@@ -16,10 +17,16 @@ type lexer struct {
 	// Current position information
 	curLine int
 	curCol  int
+    //Position information saved for unreads sake
+	prevLine int
+	prevCol  int
+	
 	// Path of current file (used for errors and other position info).
 	path string
 	// Output only channel for sending tokens.
 	out chan *Token
+	//Set to true if we have hit eof
+	eof bool
 }
 
 // Lexers the reader in a goroutine.
@@ -51,9 +58,13 @@ func (l *lexer) lexError(message string) {
 
 // Returns the next rune, and a bool representing eof
 func (l *lexer) readRune() (rune, bool) {
+	
+	l.prevLine = l.curLine
+	l.prevCol = l.curCol
 	r, _, err := l.brdr.ReadRune()
 	if err != nil {
 		if err == io.EOF {
+		    l.eof = true
 			return 0, true
 		}
 		l.lexError(err.Error())
@@ -68,6 +79,17 @@ func (l *lexer) readRune() (rune, bool) {
 		l.curCol += 1
 	}
 	return r, false
+}
+
+//Cannot go back more than one rune ever.
+func (l *lexer) unreadRune() {
+	if l.eof {
+		return
+	}
+	//I dont think we will ever unget a \t or \n.
+	l.curCol = l.prevCol
+	l.curLine = l.prevLine
+	l.brdr.UnreadRune()
 }
 
 func (l *lexer) lex() {
@@ -86,9 +108,112 @@ func (l *lexer) lex() {
 		if eof {
 		    break
 		}
-		switch first {
-		
+        switch {
+		case isAlpha(first) || first == '_':
+			l.unreadRune()
+			l.readIdentOrKeyword()
+		case isNumeric(first):
+			l.unreadRune()
+			l.readConstantIntOrFloat()
+		case isWhiteSpace(first):
+			l.unreadRune()
+			l.skipWhiteSpace()
+		default:
 		}
 	}
-    
+}
+
+var keywordLUT = map[string]TokenKind{
+    "func": FUNC,
+    "return": RETURN,
+}
+
+func (l *lexer) readIdentOrKeyword() {
+	var buff bytes.Buffer
+	l.mark()
+	first, _ := l.readRune()
+	if !isValidIdentStart(first) {
+		panic("internal error")
+	}
+	buff.WriteRune(first)
+	for {
+		b, _ := l.readRune()
+		if isValidIdentTail(b) {
+			buff.WriteRune(b)
+		} else {
+			l.unreadRune()
+			str := buff.String()
+			tokType, ok := keywordLUT[str]
+			if !ok {
+				tokType = IDENTIFIER
+			}
+			l.sendTok(tokType, str)
+			break
+		}
+	}
+}
+
+// Need to validate these with a regex or another mechanism
+func (l *lexer) readConstantIntOrFloat() {
+	var buff bytes.Buffer
+	l.mark()
+	first, _ := l.readRune()
+	if !isNumeric(first) {
+		panic("internal error")
+	}
+	buff.WriteRune(first)
+	for {
+		b, _ := l.readRune()
+		if isHexDigit(b) || b == '.' {
+			buff.WriteRune(b)
+		} else {
+			l.unreadRune()
+			str := buff.String()
+			l.sendTok(CONSTANT, str)
+			break
+		}
+	}
+}
+
+func (l *lexer) skipWhiteSpace() {
+	for {
+		r, _ := l.readRune()
+		if !isWhiteSpace(r) {
+			l.unreadRune()
+			break
+		}
+	}
+}
+
+func isValidIdentTail(b rune) bool {
+	return isValidIdentStart(b) || isNumeric(b)
+}
+
+func isValidIdentStart(b rune) bool {
+	return b == '_' || isAlpha(b)
+}
+
+func isAlpha(b rune) bool {
+	if b >= 'a' && b <= 'z' {
+		return true
+	}
+	if b >= 'A' && b <= 'Z' {
+		return true
+	}
+	return false
+}
+
+func isWhiteSpace(b rune) bool {
+	return b == ' ' || b == '\r' || b == '\n' || b == '\t' || b == '\f'
+}
+
+func isNumeric(b rune) bool {
+	if b >= '0' && b <= '9' {
+		return true
+	}
+	return false
+}
+
+func isHexDigit(b rune) bool {
+	return isNumeric(b) || (b >= 'a' && b <= 'f') || (b >= 'A' && b <= 'F')
 }
