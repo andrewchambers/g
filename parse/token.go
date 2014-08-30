@@ -21,6 +21,19 @@ const (
 	TYPE
 	IF
 	ELSE
+	NEQ
+	EQ
+	LTEQ
+	GTEQ
+	INC
+	DEC
+	ADDASSIGN
+	SUBASSIGN
+	MULASSIGN
+	AND
+	OR
+	LSHIFT
+	RSHIFT
 )
 
 func (k TokenKind) String() string {

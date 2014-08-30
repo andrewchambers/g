@@ -84,7 +84,9 @@ func (l *lexer) readRune() (rune, bool) {
 		l.curCol = 1
 		l.curLine += 1
 	case '\t':
-		l.curCol += l.curCol + (4 - ((l.curCol - 1) % 4))
+		l.curCol = (l.curCol - 1) + 4
+		l.curCol -= l.curCol % 4
+		l.curCol += 1
 	default:
 		l.curCol += 1
 	}
@@ -145,6 +147,69 @@ func (l *lexer) lex() {
 			case '"':
 				l.unreadRune()
 				l.readStringLiteral()
+			case '=':
+				next, _ := l.readRune()
+				switch next {
+				case '=':
+					l.sendTok(EQ, "==")
+				default:
+					l.unreadRune()
+					l.sendTok('=', "=")
+				}
+			case '+':
+				next, _ := l.readRune()
+				switch next {
+				case '+':
+					l.sendTok(INC, "++")
+				case '=':
+					l.sendTok(ADDASSIGN, "+=")
+				default:
+					l.unreadRune()
+					l.sendTok('+', "+")
+				}
+			case '-':
+				next, _ := l.readRune()
+				switch next {
+				case '-':
+					l.sendTok(DEC, "--")
+				case '=':
+					l.sendTok(SUBASSIGN, "-=")
+				default:
+					l.unreadRune()
+					l.sendTok('-', "-")
+				}
+			case '*':
+				next, _ := l.readRune()
+				switch next {
+				case '=':
+					l.sendTok(MULASSIGN, "+=")
+				default:
+					l.unreadRune()
+					l.sendTok('*', "*")
+				}
+
+			case '<':
+				next, _ := l.readRune()
+				switch next {
+				case '<':
+					l.sendTok(LSHIFT, "<<")
+				case '=':
+					l.sendTok(LTEQ, "<=")
+				default:
+					l.unreadRune()
+					l.sendTok('<', "<")
+				}
+			case '>':
+				next, _ := l.readRune()
+				switch next {
+				case '>':
+					l.sendTok(RSHIFT, ">>")
+				case '=':
+					l.sendTok(GTEQ, ">=")
+				default:
+					l.unreadRune()
+					l.sendTok('>', ">")
+				}
 			default:
 				l.lexError("unknown character " + string(first))
 			}

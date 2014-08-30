@@ -104,6 +104,12 @@ func (p *parser) parseDeclarations() {
 
 func (p *parser) parseVarDecl() {
 	p.expect(VAR)
+	p.expect(IDENTIFIER)
+	p.parseType(false)
+	if p.curTok.Kind == '=' {
+		p.next()
+		p.parseExpression()
+	}
 }
 
 func (p *parser) parseTypeDecl() {
@@ -161,10 +167,13 @@ func (p *parser) parseStatement() {
 	case RETURN:
 		p.next()
 		p.parseExpression()
+		p.expect(';')
 	case VAR:
 		p.parseVarDecl()
+		p.expect(';')
 	case IDENTIFIER, CONSTANT, STRING_LITERAL:
-		p.parseExpression()
+		p.parseSimpleStatement()
+		p.expect(';')
 	case FOR:
 		p.parseFor()
 	case IF:
@@ -172,11 +181,32 @@ func (p *parser) parseStatement() {
 	default:
 		p.syntaxError("error parsing statement", p.curTok.Span)
 	}
-	p.expect(';')
+}
+
+func (p *parser) parseSimpleStatement() {
+	p.parseExpression()
+	switch p.curTok.Kind {
+	case '=', ADDASSIGN, MULASSIGN:
+		p.next()
+		p.parseExpression()
+	case INC, DEC:
+		p.next()
+	default:
+	}
+
 }
 
 func (p *parser) parseFor() {
 	p.expect(FOR)
+	if p.curTok.Kind != '{' {
+		p.parseSimpleStatement()
+	}
+	if p.curTok.Kind == ';' {
+		p.next()
+		p.parseExpression()
+		p.expect(';')
+		p.parseSimpleStatement()
+	}
 	p.expect('{')
 	p.parseStatementList()
 	p.expect('}')
@@ -206,11 +236,79 @@ func (p *parser) parseIf() {
 func (p *parser) parseStruct() {
 	p.expect(STRUCT)
 	p.expect('{')
+	for p.curTok.Kind == IDENTIFIER {
+		p.next()
+		p.parseType(false)
+	}
 	p.expect('}')
 }
 
 func (p *parser) parseExpression() {
+	p.parsePrec1()
+}
+
+func (p *parser) parsePrec1() {
+	p.parsePrec2()
+	for {
+		switch p.curTok.Kind {
+		case OR:
+			p.next()
+			p.parsePrec2()
+		default:
+			return
+		}
+	}
+}
+
+func (p *parser) parsePrec2() {
+	p.parsePrec3()
+	for {
+		switch p.curTok.Kind {
+		case AND:
+			p.next()
+			p.parsePrec3()
+		default:
+			return
+		}
+	}
+}
+
+func (p *parser) parsePrec3() {
+	p.parsePrec4()
+	for {
+		switch p.curTok.Kind {
+		case EQ, NEQ, '<', LTEQ, '>', GTEQ:
+			p.next()
+			p.parsePrec4()
+		default:
+			return
+		}
+	}
+}
+func (p *parser) parsePrec4() {
+	p.parsePrec5()
+	for {
+		switch p.curTok.Kind {
+		case '+', '-', '|', '^':
+			p.next()
+			p.parsePrec5()
+		default:
+			return
+		}
+	}
+}
+
+func (p *parser) parsePrec5() {
 	p.parsePrimaryExpression()
+	for {
+		switch p.curTok.Kind {
+		case '*', '/', '%', LSHIFT, RSHIFT, '&':
+			p.next()
+			p.parsePrimaryExpression()
+		default:
+			return
+		}
+	}
 }
 
 func (p *parser) parsePrimaryExpression() {
@@ -222,6 +320,6 @@ func (p *parser) parsePrimaryExpression() {
 	case STRING_LITERAL:
 		p.next()
 	default:
-		p.syntaxError("error parsing primary expression", p.curTok.Span)
+		p.syntaxError("error parsing expression", p.curTok.Span)
 	}
 }
