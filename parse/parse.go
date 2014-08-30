@@ -34,7 +34,7 @@ func Parse(c chan *Token, onError func(string, FileSpan)) {
 }
 
 // Panics with aborting error type, does not return
-func (p *parser) parseError(message string, span FileSpan) {
+func (p *parser) syntaxError(message string, span FileSpan) {
 	p.onError(message, span)
 	panic(&breakout{})
 }
@@ -42,7 +42,7 @@ func (p *parser) parseError(message string, span FileSpan) {
 func (p *parser) next() {
 	// Lex error occured
 	if p.nextTok != nil && p.nextTok.Kind == ERROR {
-		p.parseError(p.nextTok.Val, p.nextTok.Span)
+		p.syntaxError(p.nextTok.Val, p.nextTok.Span)
 	}
 	p.curTok = p.nextTok
 	p.nextTok = <-p.c
@@ -55,7 +55,7 @@ func (p *parser) next() {
 
 func (p *parser) expect(k TokenKind) {
 	if p.curTok.Kind != k {
-		p.parseError(fmt.Sprintf("unexpected token %s, expected %s", p.curTok.Val, k), p.curTok.Span)
+		p.syntaxError(fmt.Sprintf("unexpected token '%s', expected '%s'", p.curTok.Val, k), p.curTok.Span)
 	}
 	p.next()
 }
@@ -72,6 +72,7 @@ func (p *parser) parseImportList() {
 		p.next()
 		switch p.curTok.Kind {
 		case '(':
+			p.next()
 			for p.curTok.Kind == STRING_LITERAL {
 				p.next()
 			}
@@ -79,7 +80,7 @@ func (p *parser) parseImportList() {
 		case STRING_LITERAL:
 			p.next()
 		default:
-			p.parseError("expected string literal or '('", p.curTok.Span)
+			p.syntaxError("expected string literal or '('", p.curTok.Span)
 		}
 	}
 }
@@ -87,6 +88,8 @@ func (p *parser) parseImportList() {
 func (p *parser) parseDeclarations() {
 	for p.curTok.Kind != EOF {
 		switch p.curTok.Kind {
+		case TYPE:
+			p.parseTypeDecl()
 		case FUNC:
 			p.parseFuncDecl()
 		case VAR:
@@ -94,13 +97,19 @@ func (p *parser) parseDeclarations() {
 		case CONST:
 			p.parseConst()
 		default:
-			p.parseError("expected var, const or func", p.curTok.Span)
+			p.syntaxError("expected var, const or func", p.curTok.Span)
 		}
 	}
 }
 
 func (p *parser) parseVarDecl() {
+	p.expect(VAR)
+}
 
+func (p *parser) parseTypeDecl() {
+	p.expect(TYPE)
+	p.expect(IDENTIFIER)
+	p.parseType(false)
 }
 
 func (p *parser) parseFuncDecl() {
@@ -109,9 +118,28 @@ func (p *parser) parseFuncDecl() {
 	p.expect('(')
 	p.parseArgList()
 	p.expect(')')
+	p.parseFuncReturnType()
 	p.expect('{')
 	p.parseStatementList()
 	p.expect('}')
+}
+
+func (p *parser) parseType(allowEmpty bool) {
+	switch p.curTok.Kind {
+	case STRUCT:
+		p.parseStruct()
+	case IDENTIFIER:
+		p.next()
+	default:
+		if allowEmpty {
+			return
+		}
+		p.syntaxError("expected a type", p.curTok.Span)
+	}
+}
+
+func (p *parser) parseFuncReturnType() {
+	p.parseType(true)
 }
 
 func (p *parser) parseArgList() {
@@ -119,9 +147,81 @@ func (p *parser) parseArgList() {
 }
 
 func (p *parser) parseConst() {
-
+	p.expect(CONST)
 }
 
 func (p *parser) parseStatementList() {
+	for p.curTok.Kind != '}' && p.curTok.Kind != EOF {
+		p.parseStatement()
+	}
+}
 
+func (p *parser) parseStatement() {
+	switch p.curTok.Kind {
+	case RETURN:
+		p.next()
+		p.parseExpression()
+	case VAR:
+		p.parseVarDecl()
+	case IDENTIFIER, CONSTANT, STRING_LITERAL:
+		p.parseExpression()
+	case FOR:
+		p.parseFor()
+	case IF:
+		p.parseIf()
+	default:
+		p.syntaxError("error parsing statement", p.curTok.Span)
+	}
+	p.expect(';')
+}
+
+func (p *parser) parseFor() {
+	p.expect(FOR)
+	p.expect('{')
+	p.parseStatementList()
+	p.expect('}')
+}
+
+func (p *parser) parseIf() {
+	p.expect(IF)
+	p.parseExpression()
+	p.expect('{')
+	p.parseStatementList()
+	p.expect('}')
+	if p.curTok.Kind == ELSE {
+		p.next()
+		switch p.curTok.Kind {
+		case IF:
+			p.parseIf()
+		case '{':
+			p.expect('{')
+			p.parseStatementList()
+			p.expect('}')
+		default:
+			p.syntaxError("If ", p.curTok.Span)
+		}
+	}
+}
+
+func (p *parser) parseStruct() {
+	p.expect(STRUCT)
+	p.expect('{')
+	p.expect('}')
+}
+
+func (p *parser) parseExpression() {
+	p.parsePrimaryExpression()
+}
+
+func (p *parser) parsePrimaryExpression() {
+	switch p.curTok.Kind {
+	case IDENTIFIER:
+		p.next()
+	case CONSTANT:
+		p.next()
+	case STRING_LITERAL:
+		p.next()
+	default:
+		p.syntaxError("error parsing primary expression", p.curTok.Span)
+	}
 }

@@ -21,7 +21,6 @@ type lexer struct {
 	//Position information saved for unreads sake
 	prevLine int
 	prevCol  int
-
 	// Path of current file (used for errors and other position info).
 	path string
 	// Output only channel for sending tokens.
@@ -160,6 +159,11 @@ var keywordLUT = map[string]TokenKind{
 	"struct":  STRUCT,
 	"import":  IMPORT,
 	"for":     FOR,
+	"if":      IF,
+	"else":    ELSE,
+	"type":    TYPE,
+	"var":     VAR,
+	"const":   CONST,
 }
 
 func (l *lexer) readIdentOrKeyword() {

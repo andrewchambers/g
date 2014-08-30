@@ -16,11 +16,16 @@ const (
 	CONSTANT
 	STRING_LITERAL
 	IDENTIFIER
+	VAR
+	CONST
+	TYPE
+	IF
+	ELSE
 )
 
 func (k TokenKind) String() string {
 	if k < ERROR {
-		return fmt.Sprintf("%c(%d)", k, k)
+		return fmt.Sprintf("%c", k)
 	}
 
 	var lut = map[TokenKind]string{
@@ -28,6 +33,8 @@ func (k TokenKind) String() string {
 		PACKAGE: "package",
 		IMPORT:  "import",
 		RETURN:  "return",
+		TYPE:    "type",
+		IF:      "IF",
 	}
 	s, ok := lut[k]
 	if ok {
