@@ -1,12 +1,39 @@
 package parse
 
+import "fmt"
+
 type TokenKind int
+
+const (
+	ERROR = 0xffff + iota
+	EOF
+	FOR
+	PACKAGE
+	IMPORT
+	FUNC
+	RETURN
+	STRUCT
+	CONSTANT
+	STRING_LITERAL
+	IDENTIFIER
+)
 
 func (k TokenKind) String() string {
 	if k < ERROR {
-		return yyTokname(int(k) - 4)
+		return fmt.Sprintf("%c(%d)", k, k)
 	}
-	return yyTokname(int(k) - ERROR + 4)
+
+	var lut = map[TokenKind]string{
+		FOR:     "for",
+		PACKAGE: "package",
+		IMPORT:  "import",
+		RETURN:  "return",
+	}
+	s, ok := lut[k]
+	if ok {
+		return s
+	}
+	return fmt.Sprintf("%d", k)
 }
 
 // The type representing a G lexical token.
