@@ -2,9 +2,12 @@ package parse
 
 type TokenKind int
 
-const (
-	TOK_ERROR = iota
-)
+func (k TokenKind) String() string {
+	if k < ERROR {
+		return yyTokname(int(k) - 4)
+	}
+	return yyTokname(int(k) - ERROR + 4)
+}
 
 // The type representing a G lexical token.
 type Token struct {

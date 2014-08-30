@@ -1,7 +1,8 @@
 %{
 package parse
 %}
-%token IDENTIFIER CONSTANT STRING_LITERAL FUNC RETURN
+
+%token ERROR IDENTIFIER CONSTANT STRING_LITERAL FUNC RETURN PACKAGE STRUCT IMPORT FOR
 
 
 %start translation_unit
@@ -15,9 +16,36 @@ package parse
 %%
 
 
-translation_unit : func_def
+translation_unit : 
+    package_decl import_list func_def
+
+package_decl:
+    PACKAGE IDENTIFIER
+
+import_list:
+    | import import_list
+    
+import:
+    IMPORT STRING_LITERAL
 
 func_def :
-FUNC IDENTIFIER '(' ')' '{' RETURN ';' '}'
+    FUNC IDENTIFIER '(' ')' type '{' statement '}'
+    FUNC IDENTIFIER '(' ')' '{' statement '}'
+
+type :
+    | IDENTIFIER
+    | struct
+
+struct :
+    STRUCT '{' '}'
+
+statement:
+    RETURN expression ';'
+
+expression :
+    primary_expression
+
+primary_expression:
+    CONSTANT
 
 %%

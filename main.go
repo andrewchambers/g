@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/andrewchambers/g/parse"
+	"github.com/andrewchambers/g/reporting"
 	"io"
 	"os"
 	"runtime/pprof"
@@ -76,7 +77,7 @@ func main() {
 	if *tokenizeOnly {
 		tokenizeFile(input, output)
 	} else if *parseOnly {
-		//parseFile(input, output)
+		parseFile(input, output)
 	} else {
 		//compileFile(input, nil, output)
 	}
@@ -94,11 +95,11 @@ func tokenizeFile(sourceFile string, out io.WriteCloser) {
 		if tok == nil {
 			return
 		}
-		if tok.Kind == parse.TOK_ERROR {
+		if tok.Kind == parse.ERROR {
 			fmt.Fprintln(os.Stderr, tok.Val)
 			os.Exit(1)
 		}
-		//fmt.Fprintf(out, "%s:%s:%d:%d\n", tok.Kind, tok.Val, tok.Pos.Line, tok.Pos.Col)
+		fmt.Fprintf(out, "%s:%s:%d:%d\n", tok.Kind, tok.Val, tok.Span.Start.Line, tok.Span.Start.Col)
 	}
 }
 
@@ -109,6 +110,13 @@ func parseFile(sourceFile string, out io.WriteCloser) {
 		fmt.Fprintf(os.Stderr, "Failed to open source file %s for lexing: %s\n", sourceFile, err)
 		os.Exit(1)
 	}
+
+	reportErrorAndQuit := func(message string, span parse.FileSpan) {
+		fmt.Printf("%s at %s:%d:%d\n", message, span.Start.Path, span.Start.Line, span.Start.Col)
+		reporting.PrintPosAsError(span.Start.Path, span.Start.Line, span.Start.Col)
+		os.Exit(1)
+	}
+
 	tokChan := parse.Lex(sourceFile, f)
-	parse.Parse(tokChan)
+	parse.Parse(tokChan, reportErrorAndQuit)
 }

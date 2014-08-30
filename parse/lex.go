@@ -3,11 +3,12 @@ package parse
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 )
 
 // breakout is a dummy type just used for leaving the lexing loop with panic.
-type breakout struct {}
+type breakout struct{}
 
 type lexer struct {
 	// Marked token start position in current file.
@@ -17,10 +18,10 @@ type lexer struct {
 	// Current position information
 	curLine int
 	curCol  int
-    //Position information saved for unreads sake
+	//Position information saved for unreads sake
 	prevLine int
 	prevCol  int
-	
+
 	// Path of current file (used for errors and other position info).
 	path string
 	// Output only channel for sending tokens.
@@ -34,6 +35,15 @@ type lexer struct {
 // The Error token is returned on lex error.
 func Lex(path string, r io.Reader) chan *Token {
 	out := make(chan *Token, 1024)
+	l := new(lexer)
+	l.brdr = bufio.NewReader(r)
+	l.path = path
+	l.curLine = 1
+	l.curCol = 1
+	l.prevLine = 1
+	l.prevCol = 1
+	l.out = out
+	go l.lex()
 	return out
 }
 
@@ -53,28 +63,29 @@ func (l *lexer) sendTok(k TokenKind, val string) {
 
 // Panics with aborting error type, does not return
 func (l *lexer) lexError(message string) {
-    
+	l.sendTok(ERROR, fmt.Sprintf("Error while lexing: "+message))
+	panic(&breakout{})
 }
 
 // Returns the next rune, and a bool representing eof
 func (l *lexer) readRune() (rune, bool) {
-	
+
 	l.prevLine = l.curLine
 	l.prevCol = l.curCol
 	r, _, err := l.brdr.ReadRune()
 	if err != nil {
 		if err == io.EOF {
-		    l.eof = true
+			l.eof = true
 			return 0, true
 		}
 		l.lexError(err.Error())
 	}
 	switch r {
 	case '\n':
-	    l.curCol = 1
+		l.curCol = 1
 		l.curLine += 1
 	case '\t':
-		l.curCol += l.curCol + (4 - ((l.curCol-1) % 4))
+		l.curCol += l.curCol + (4 - ((l.curCol - 1) % 4))
 	default:
 		l.curCol += 1
 	}
@@ -101,14 +112,14 @@ func (l *lexer) lex() {
 
 	}()
 	defer close(l.out)
-	
+
 	for {
 		l.mark()
-	    first, eof := l.readRune()
+		first, eof := l.readRune()
 		if eof {
-		    break
+			break
 		}
-        switch {
+		switch {
 		case isAlpha(first) || first == '_':
 			l.unreadRune()
 			l.readIdentOrKeyword()
@@ -119,13 +130,36 @@ func (l *lexer) lex() {
 			l.unreadRune()
 			l.skipWhiteSpace()
 		default:
+			switch first {
+			case '(':
+				l.sendTok('(', "(")
+			case ')':
+				l.sendTok(')', ")")
+			case ';':
+				l.sendTok(';', ";")
+			case '{':
+				l.sendTok('{', "{")
+			case '}':
+				l.sendTok('}', "}")
+			case '.':
+				l.sendTok('.', ".")
+			case '"':
+				l.unreadRune()
+				l.readStringLiteral()
+			default:
+				l.lexError("unknown character " + string(first))
+			}
 		}
 	}
 }
 
 var keywordLUT = map[string]TokenKind{
-    "func": FUNC,
-    "return": RETURN,
+	"func":    FUNC,
+	"return":  RETURN,
+	"package": PACKAGE,
+	"struct":  STRUCT,
+	"import":  IMPORT,
+	"for":     FOR,
 }
 
 func (l *lexer) readIdentOrKeyword() {
@@ -173,6 +207,28 @@ func (l *lexer) readConstantIntOrFloat() {
 			break
 		}
 	}
+}
+
+// Need to validate these with a regex or another mechanism
+func (l *lexer) readStringLiteral() {
+	var buff bytes.Buffer
+	l.mark()
+	first, _ := l.readRune()
+	if first != '"' {
+		panic("internal error")
+	}
+	buff.WriteRune(first)
+	for {
+		b, eof := l.readRune()
+		if eof {
+			l.lexError("eof while reading string literal")
+		}
+		buff.WriteRune(b)
+		if b == '"' {
+			break
+		}
+	}
+	l.sendTok(STRING_LITERAL, buff.String())
 }
 
 func (l *lexer) skipWhiteSpace() {
