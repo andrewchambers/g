@@ -130,18 +130,23 @@ func (p *parser) parseFuncDecl() {
 	p.expect('}')
 }
 
-func (p *parser) parseType(allowEmpty bool) {
+func (p *parser) parseType(allowEmpty bool) ASTNode {
 	switch p.curTok.Kind {
 	case STRUCT:
-		p.parseStruct()
+		return p.parseStruct()
 	case IDENTIFIER:
+		ret := &ASTIdent{}
+		ret.span = p.curTok.Span
+		ret.val = p.curTok.Val
 		p.next()
+		return ret
 	default:
 		if allowEmpty {
-			return
+			return nil
 		}
 		p.syntaxError("expected a type", p.curTok.Span)
 	}
+	return nil
 }
 
 func (p *parser) parseFuncReturnType() {
@@ -149,7 +154,13 @@ func (p *parser) parseFuncReturnType() {
 }
 
 func (p *parser) parseArgList() {
-
+	for p.curTok.Kind == IDENTIFIER {
+		p.next()
+		p.parseType(false)
+		if p.curTok.Kind == ',' {
+			p.next()
+		}
+	}
 }
 
 func (p *parser) parseConst() {
@@ -233,93 +244,146 @@ func (p *parser) parseIf() {
 	}
 }
 
-func (p *parser) parseStruct() {
+func (p *parser) parseStruct() ASTNode {
+	ret := &ASTStruct{}
+	ret.span = p.curTok.Span
 	p.expect(STRUCT)
 	p.expect('{')
 	for p.curTok.Kind == IDENTIFIER {
+		ret.names = append(ret.names, p.curTok.Val)
 		p.next()
-		p.parseType(false)
+		ret.types = append(ret.types, p.parseType(false))
 	}
+	ret.span.End = p.curTok.Span.End
 	p.expect('}')
+	return ret
 }
 
-func (p *parser) parseExpression() {
-	p.parsePrec1()
+func (p *parser) parseExpression() ASTNode {
+	return p.parsePrec1()
 }
 
-func (p *parser) parsePrec1() {
-	p.parsePrec2()
+func (p *parser) parsePrec1() ASTNode {
+	l := p.parsePrec2()
 	for {
 		switch p.curTok.Kind {
 		case OR:
 			p.next()
-			p.parsePrec2()
+			r := p.parsePrec2()
+			n := &ASTBinop{}
+			n.op = p.curTok.Kind
+			n.l = l
+			n.r = r
+			n.span = l.GetSpan()
+			n.span.End = r.GetSpan().End
+			l = n
 		default:
-			return
+			return l
 		}
 	}
 }
 
-func (p *parser) parsePrec2() {
-	p.parsePrec3()
+func (p *parser) parsePrec2() ASTNode {
+	l := p.parsePrec3()
 	for {
 		switch p.curTok.Kind {
 		case AND:
 			p.next()
-			p.parsePrec3()
+			r := p.parsePrec3()
+			n := &ASTBinop{}
+			n.op = p.curTok.Kind
+			n.l = l
+			n.r = r
+			n.span = l.GetSpan()
+			n.span.End = r.GetSpan().End
+			l = n
 		default:
-			return
+			return l
 		}
 	}
 }
 
-func (p *parser) parsePrec3() {
-	p.parsePrec4()
+func (p *parser) parsePrec3() ASTNode {
+	l := p.parsePrec4()
 	for {
 		switch p.curTok.Kind {
 		case EQ, NEQ, '<', LTEQ, '>', GTEQ:
 			p.next()
-			p.parsePrec4()
+			r := p.parsePrec4()
+			n := &ASTBinop{}
+			n.op = p.curTok.Kind
+			n.l = l
+			n.r = r
+			n.span = l.GetSpan()
+			n.span.End = r.GetSpan().End
+			l = n
 		default:
-			return
+			return l
 		}
 	}
 }
-func (p *parser) parsePrec4() {
-	p.parsePrec5()
+func (p *parser) parsePrec4() ASTNode {
+	l := p.parsePrec5()
 	for {
 		switch p.curTok.Kind {
 		case '+', '-', '|', '^':
 			p.next()
-			p.parsePrec5()
+			r := p.parsePrec5()
+			n := &ASTBinop{}
+			n.op = p.curTok.Kind
+			n.l = l
+			n.r = r
+			n.span = l.GetSpan()
+			n.span.End = r.GetSpan().End
+			l = n
 		default:
-			return
+			return l
 		}
 	}
 }
 
-func (p *parser) parsePrec5() {
-	p.parsePrimaryExpression()
+func (p *parser) parsePrec5() ASTNode {
+	l := p.parsePrimaryExpression()
 	for {
 		switch p.curTok.Kind {
 		case '*', '/', '%', LSHIFT, RSHIFT, '&':
 			p.next()
-			p.parsePrimaryExpression()
+			r := p.parsePrimaryExpression()
+			n := &ASTBinop{}
+			n.op = p.curTok.Kind
+			n.l = l
+			n.r = r
+			n.span = l.GetSpan()
+			n.span.End = r.GetSpan().End
+			l = n
 		default:
-			return
+			return l
 		}
 	}
 }
 
-func (p *parser) parsePrimaryExpression() {
+func (p *parser) parsePrimaryExpression() ASTNode {
 	switch p.curTok.Kind {
 	case IDENTIFIER:
+		ret := &ASTIdent{}
+		ret.val = p.curTok.Val
+		ret.span = p.curTok.Span
 		p.next()
+		return ret
 	case CONSTANT:
+		ret := &ASTConstant{}
+		ret.val = p.curTok.Val
+		ret.span = p.curTok.Span
 		p.next()
+		return ret
 	case STRING_LITERAL:
+		ret := &ASTString{}
+		ret.val = p.curTok.Val
+		ret.span = p.curTok.Span
 		p.next()
+		return ret
 	default:
 		p.syntaxError("error parsing expression", p.curTok.Span)
 	}
+	return nil
 }

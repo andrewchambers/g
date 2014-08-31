@@ -69,8 +69,6 @@ type Token struct {
 // Represents a single point in the file as shown in most text editors.
 // Tabs are treated as being aligned to 4 places.
 type FilePos struct {
-	//Path
-	Path string
 	// Line number starting at one.
 	Line int
 	// Col starting at one.
@@ -79,6 +77,8 @@ type FilePos struct {
 
 // A span across two points.
 type FileSpan struct {
+	//Path
+	Path  string
 	Start FilePos
 	End   FilePos
 }

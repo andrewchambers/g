@@ -52,12 +52,12 @@ func (l *lexer) mark() {
 }
 
 func (l *lexer) currentPos() FilePos {
-	return FilePos{l.path, l.curLine, l.curCol}
+	return FilePos{l.curLine, l.curCol}
 }
 
 // Saves the current lexer position in markedPos.
 func (l *lexer) sendTok(k TokenKind, val string) {
-	l.out <- &Token{k, val, FileSpan{l.markedPos, l.currentPos()}}
+	l.out <- &Token{k, val, FileSpan{l.path, l.markedPos, l.currentPos()}}
 }
 
 // Panics with aborting error type, does not return

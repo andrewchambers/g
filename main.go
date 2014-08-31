@@ -112,8 +112,8 @@ func parseFile(sourceFile string, out io.WriteCloser) {
 	}
 
 	reportErrorAndQuit := func(message string, span parse.FileSpan) {
-		fmt.Printf("%s at %s:%d:%d\n", message, span.Start.Path, span.Start.Line, span.Start.Col)
-		reporting.PrintPosAsError(span.Start.Path, span.Start.Line, span.Start.Col)
+		fmt.Printf("%s at %s:%d:%d\n", message, span.Path, span.Start.Line, span.Start.Col)
+		reporting.PrintPosAsError(span.Path, span.Start.Line, span.Start.Col)
 		os.Exit(1)
 	}
 
