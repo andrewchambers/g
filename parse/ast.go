@@ -113,29 +113,27 @@ func (n *ASTConstant) String() string {
 }
 
 type ASTString struct {
-	span FileSpan
-	val  string
+	SpanProvider
+	val string
 }
 
-func (n *ASTString) GetSpan() FileSpan { return n.span }
 func (n *ASTString) String() string {
 	return n.val
 }
 
 type ASTVarDecl struct {
-	span FileSpan
+	SpanProvider
 	val  string
 	init ASTNode
 }
 
-func (n *ASTVarDecl) GetSpan() FileSpan { return n.span }
 func (n *ASTVarDecl) String() string {
 	return "(VARDECL)"
 }
 
 type ASTFuncDecl struct {
 	SpanProvider
-	name    string
+	Name    string
 	RetType ASTNode
 	Args    []ASTNode
 	Body    []ASTNode

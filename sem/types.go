@@ -3,6 +3,11 @@ package sem
 type GType interface {
 }
 
+type GAlias struct {
+	Name   string
+	Actual GType
+}
+
 type GStruct struct {
 	Names []string
 	Types []GType

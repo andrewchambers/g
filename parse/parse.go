@@ -388,7 +388,7 @@ func (p *parser) parsePrimaryExpression() ASTNode {
 	case STRING_LITERAL:
 		v := &ASTString{}
 		v.val = p.curTok.Val
-		v.span = p.curTok.Span
+		v.Span = p.curTok.Span
 		p.next()
 		ret = v
 	default:

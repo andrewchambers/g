@@ -1,22 +1,104 @@
 package sem
 
 import (
+	"fmt"
 	"github.com/andrewchambers/g/parse"
 )
 
-func Process(tUnit *parse.ASTTUnit) {
-	funcDecls := gatherFuncDecls(tUnit)
-	for _, v := range funcDecls {
-		_ = funcDeclToGType(v)
-	}
+func Process(tunit *parse.ASTTUnit) {
+	state := newSemState()
+	state.process(tunit)
 }
 
-func funcDeclToGType(decl *parse.ASTFuncDecl) GType {
-	ret := &GFunc{}
-	ret.RetType = astNodeToGType(decl)
+type semState struct {
+	scope *scope
+}
+
+func newSemState() *semState {
+	ret := &semState{}
+	ret.scope = newScope(nil)
 	return ret
 }
 
+type scope struct {
+	parent *scope
+	kv     map[string]*Symbol
+}
+
+func newScope(parent *scope) *scope {
+	ret := &scope{}
+	ret.parent = parent
+	ret.kv = make(map[string]*Symbol)
+	return ret
+}
+
+//Returns the symbol, and true if symbol is global
+func (s *scope) lookup(name string) (*Symbol, bool) {
+	sym, ok := s.kv[name]
+	if ok {
+		return sym, s.parent == nil
+	}
+	if s.parent == nil {
+		return nil, false
+	}
+	return s.parent.lookup(name)
+}
+
+func (s *scope) define(name string, sym *Symbol) error {
+	_, ok := s.kv[name]
+	if ok {
+		return fmt.Errorf("Redefining symbol %s", name)
+	}
+	s.kv[name] = sym
+	return nil
+}
+
+type Symbol struct {
+	Name      string
+	DefinedAt parse.FileSpan
+	Type      GType
+}
+
+func (s *semState) pushScope() {
+	s.scope = newScope(s.scope)
+}
+
+func (s *semState) popScope() {
+	s.scope = s.scope.parent
+	if s.scope == nil {
+		panic("internal error unbalanced scopes!")
+	}
+}
+
+func (state *semState) process(tunit *parse.ASTTUnit) {
+	state.defineGlobalSymbols(tunit)
+	for _, v := range tunit.Body {
+		switch v := v.(type) {
+		case *parse.ASTFuncDecl:
+			_ = state.emitSemFunctionTree(v)
+		}
+	}
+}
+
+func (state *semState) defineGlobalSymbols(tunit *parse.ASTTUnit) {
+	for _, v := range tunit.Body {
+		switch v := v.(type) {
+		case *parse.ASTFuncDecl:
+			sym := &Symbol{}
+			sym.DefinedAt = v.GetSpan()
+			sym.Name = v.Name
+			sym.Type = astNodeToGType(v)
+			err := state.scope.define(sym.Name, sym)
+			if err != nil {
+				panic(err)
+			}
+		case *parse.ASTVarDecl:
+			panic("unimplemented var global")
+		default:
+		}
+	}
+
+}
 func astNodeToGType(n parse.ASTNode) GType {
 	switch v := n.(type) {
 	case *parse.ASTIdent:
@@ -29,20 +111,37 @@ func astNodeToGType(n parse.ASTNode) GType {
 		default:
 			panic("unimplemented error")
 		}
+	case *parse.ASTFuncDecl:
+		ret := &GFunc{}
+		ret.RetType = astNodeToGType(n)
+		return ret
 	default:
 		panic("unimplemented error")
 	}
 	panic("unreachable")
 }
 
-func gatherFuncDecls(tunit *parse.ASTTUnit) []*parse.ASTFuncDecl {
-	var ret []*parse.ASTFuncDecl
-	for _, v := range tunit.Body {
-		switch f := v.(type) {
-		case *parse.ASTFuncDecl:
-			ret = append(ret, f)
-		default:
-		}
+func (state *semState) emitSemFunctionTree(ast *parse.ASTFuncDecl) *SemFunction {
+	f := &SemFunction{}
+	for _, statement := range ast.Body {
+		semStatement := state.emitSemStatement(statement)
+		f.Statements = append(f.Statements, semStatement)
+	}
+	return f
+}
+
+func (state *semState) emitSemStatement(statement parse.ASTNode) SemNode {
+	var ret SemNode = nil
+	switch n := statement.(type) {
+	case *parse.ASTCall:
+		ret = state.emitSemCall(n)
+	default:
+		panic("unimplemented case or error...")
 	}
 	return ret
+}
+
+func (state *semState) emitSemCall(ast parse.ASTNode) SemNode {
+	scall := &SemCall{}
+	return scall
 }
