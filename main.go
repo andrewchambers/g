@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/andrewchambers/g/parse"
 	"github.com/andrewchambers/g/reporting"
+	"github.com/andrewchambers/g/sem"
 	"io"
 	"os"
 	"runtime/pprof"
@@ -79,7 +80,7 @@ func main() {
 	} else if *parseOnly {
 		parseFile(input, output)
 	} else {
-		//compileFile(input, nil, output)
+		compileFile(input, output)
 	}
 }
 
@@ -103,7 +104,7 @@ func tokenizeFile(sourceFile string, out io.WriteCloser) {
 	}
 }
 
-func parseFile(sourceFile string, out io.WriteCloser) {
+func parseFile(sourceFile string, out io.WriteCloser) *parse.ASTTUnit {
 	defer out.Close()
 	f, err := os.Open(sourceFile)
 	if err != nil {
@@ -118,5 +119,10 @@ func parseFile(sourceFile string, out io.WriteCloser) {
 	}
 
 	tokChan := parse.Lex(sourceFile, f)
-	parse.Parse(tokChan, reportErrorAndQuit)
+	return parse.Parse(tokChan, reportErrorAndQuit)
+}
+
+func compileFile(sourceFile string, out io.WriteCloser) {
+	ast := parseFile(sourceFile, out)
+	sem.Process(ast)
 }

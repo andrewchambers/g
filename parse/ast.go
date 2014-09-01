@@ -4,9 +4,37 @@ import (
 	"fmt"
 )
 
+type SpanProvider struct {
+	// The file span of the token.
+	Span FileSpan
+}
+
+func (s *SpanProvider) GetSpan() FileSpan {
+	return s.Span
+}
+
 type ASTNode interface {
 	String() string
 	GetSpan() FileSpan
+}
+
+type ASTTUnit struct {
+	SpanProvider
+	Pkg string
+	//List of imports in the translation unit.
+	Imports []*Token
+	Body    []ASTNode
+}
+
+func (n *ASTTUnit) addImport(t *Token) {
+	if t.Kind != STRING_LITERAL {
+		panic("internal error!")
+	}
+	n.Imports = append(n.Imports, t)
+}
+
+func (n *ASTTUnit) String() string {
+	return fmt.Sprintf("(TUnit)")
 }
 
 type ASTFor struct {
@@ -43,6 +71,17 @@ func (n *ASTBinop) String() string {
 	return "(BINOP)"
 }
 
+type ASTCall struct {
+	span     FileSpan
+	funcLike ASTNode
+	args     []ASTNode
+}
+
+func (n *ASTCall) GetSpan() FileSpan { return n.span }
+func (n *ASTCall) String() string {
+	return "(CALL)"
+}
+
 type ASTStruct struct {
 	span  FileSpan
 	names []string
@@ -55,13 +94,12 @@ func (n *ASTStruct) String() string {
 }
 
 type ASTIdent struct {
-	span FileSpan
-	val  string
+	SpanProvider
+	Val string
 }
 
-func (n *ASTIdent) GetSpan() FileSpan { return n.span }
 func (n *ASTIdent) String() string {
-	return n.val
+	return n.Val
 }
 
 type ASTConstant struct {
@@ -96,14 +134,13 @@ func (n *ASTVarDecl) String() string {
 }
 
 type ASTFuncDecl struct {
-	span    FileSpan
+	SpanProvider
 	name    string
-	retType ASTNode
-	args    []ASTNode
-	body    []ASTNode
+	RetType ASTNode
+	Args    []ASTNode
+	Body    []ASTNode
 }
 
-func (n *ASTFuncDecl) GetSpan() FileSpan { return n.span }
 func (n *ASTFuncDecl) String() string {
 	return "(FUNCDECL)"
 }

@@ -11,7 +11,7 @@ type parser struct {
 	onError func(string, FileSpan)
 }
 
-func Parse(c chan *Token, onError func(string, FileSpan)) {
+func Parse(c chan *Token, onError func(string, FileSpan)) *ASTTUnit {
 	//Read channel until empty incase of errors
 	defer func() {
 		for {
@@ -30,7 +30,8 @@ func Parse(c chan *Token, onError func(string, FileSpan)) {
 	p := &parser{c: c, onError: onError}
 	p.next()
 	p.next()
-	p.parseTranslationUnit()
+	ret := p.parseTranslationUnit()
+	return ret
 }
 
 // Panics with aborting error type, does not return
@@ -60,24 +61,31 @@ func (p *parser) expect(k TokenKind) {
 	p.next()
 }
 
-func (p *parser) parseTranslationUnit() {
+func (p *parser) parseTranslationUnit() *ASTTUnit {
+	ret := &ASTTUnit{}
 	p.expect(PACKAGE)
+	//This span is bogus, but a TUnit is just the whole file.
+	ret.Span = p.curTok.Span
+	ret.Pkg = p.curTok.Val
 	p.expect(IDENTIFIER)
-	p.parseImportList()
+	p.parseImportList(ret)
 	p.parseDeclarations()
+	return ret
 }
 
-func (p *parser) parseImportList() {
+func (p *parser) parseImportList(tunit *ASTTUnit) {
 	for p.curTok.Kind == IMPORT {
 		p.next()
 		switch p.curTok.Kind {
 		case '(':
 			p.next()
 			for p.curTok.Kind == STRING_LITERAL {
+				tunit.addImport(p.curTok)
 				p.next()
 			}
 			p.expect(')')
 		case STRING_LITERAL:
+			tunit.addImport(p.curTok)
 			p.next()
 		default:
 			p.syntaxError("expected string literal or '('", p.curTok.Span)
@@ -136,8 +144,8 @@ func (p *parser) parseType(allowEmpty bool) ASTNode {
 		return p.parseStruct()
 	case IDENTIFIER:
 		ret := &ASTIdent{}
-		ret.span = p.curTok.Span
-		ret.val = p.curTok.Val
+		ret.Span = p.curTok.Span
+		ret.Val = p.curTok.Val
 		p.next()
 		return ret
 	default:
@@ -363,27 +371,51 @@ func (p *parser) parsePrec5() ASTNode {
 }
 
 func (p *parser) parsePrimaryExpression() ASTNode {
+	var ret ASTNode = nil
 	switch p.curTok.Kind {
 	case IDENTIFIER:
-		ret := &ASTIdent{}
-		ret.val = p.curTok.Val
-		ret.span = p.curTok.Span
+		v := &ASTIdent{}
+		v.Val = p.curTok.Val
+		v.Span = p.curTok.Span
 		p.next()
-		return ret
+		ret = v
 	case CONSTANT:
-		ret := &ASTConstant{}
-		ret.val = p.curTok.Val
-		ret.span = p.curTok.Span
+		v := &ASTConstant{}
+		v.val = p.curTok.Val
+		v.span = p.curTok.Span
 		p.next()
-		return ret
+		ret = v
 	case STRING_LITERAL:
-		ret := &ASTString{}
-		ret.val = p.curTok.Val
-		ret.span = p.curTok.Span
+		v := &ASTString{}
+		v.val = p.curTok.Val
+		v.span = p.curTok.Span
 		p.next()
-		return ret
+		ret = v
 	default:
 		p.syntaxError("error parsing expression", p.curTok.Span)
 	}
+
+	if p.curTok.Kind == '(' {
+		ret = p.parseCall(ret)
+	}
+
 	return nil
+}
+
+func (p *parser) parseCall(funcLike ASTNode) ASTNode {
+	call := &ASTCall{}
+	call.funcLike = funcLike
+	call.span = funcLike.GetSpan()
+	var args []ASTNode
+	p.expect('(')
+	for p.curTok.Kind != ')' && p.curTok.Kind != EOF {
+		args = append(args, p.parseExpression())
+		if p.curTok.Kind == ',' {
+			p.next()
+		}
+	}
+	call.span.End = p.curTok.Span.End
+	p.expect(')')
+	call.args = args
+	return call
 }
