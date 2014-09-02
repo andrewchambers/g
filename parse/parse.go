@@ -8,10 +8,12 @@ type parser struct {
 	curTok  *Token
 	nextTok *Token
 	c       chan *Token
-	onError func(string, FileSpan)
+	ast     *File
+	err     error
+	
 }
 
-func Parse(c chan *Token, onError func(string, FileSpan)) *ASTTUnit {
+func Parse(c chan *Token) (*File,error) {
 	//Read channel until empty incase of errors
 	defer func() {
 		for {
@@ -27,16 +29,16 @@ func Parse(c chan *Token, onError func(string, FileSpan)) *ASTTUnit {
 		}
 
 	}()
-	p := &parser{c: c, onError: onError}
+	p := &parser{c: c}
 	p.next()
 	p.next()
-	ret := p.parseTranslationUnit()
-	return ret
+	p.parseFile()
+	return p.ast,p.err
 }
 
 // Panics with aborting error type, does not return
 func (p *parser) syntaxError(message string, span FileSpan) {
-	p.onError(message, span)
+    p.err = fmt.Errorf("%s at %s:%d:%d",message,span.Path,span.Start.Line,span.Start.Col)
 	panic(&breakout{})
 }
 
@@ -61,31 +63,30 @@ func (p *parser) expect(k TokenKind) {
 	p.next()
 }
 
-func (p *parser) parseTranslationUnit() *ASTTUnit {
-	ret := &ASTTUnit{}
+func (p *parser) parseFile() {
+	p.ast = &File{}
 	p.expect(PACKAGE)
-	//This span is bogus, but a TUnit is just the whole file.
-	ret.Span = p.curTok.Span
-	ret.Pkg = p.curTok.Val
+	//This span is bogus, but a File is just the whole file.
+	p.ast.Span = p.curTok.Span
+	p.ast.Pkg = p.curTok.Val
 	p.expect(IDENTIFIER)
-	p.parseImportList(ret)
+	p.parseImportList()
 	p.parseDeclarations()
-	return ret
 }
 
-func (p *parser) parseImportList(tunit *ASTTUnit) {
+func (p *parser) parseImportList() {
 	for p.curTok.Kind == IMPORT {
 		p.next()
 		switch p.curTok.Kind {
 		case '(':
 			p.next()
 			for p.curTok.Kind == STRING_LITERAL {
-				tunit.addImport(p.curTok)
+				p.ast.addImport(p.curTok)
 				p.next()
 			}
 			p.expect(')')
 		case STRING_LITERAL:
-			tunit.addImport(p.curTok)
+			p.ast.addImport(p.curTok)
 			p.next()
 		default:
 			p.syntaxError("expected string literal or '('", p.curTok.Span)
@@ -138,12 +139,12 @@ func (p *parser) parseFuncDecl() {
 	p.expect('}')
 }
 
-func (p *parser) parseType(allowEmpty bool) ASTNode {
+func (p *parser) parseType(allowEmpty bool) Node {
 	switch p.curTok.Kind {
 	case STRUCT:
 		return p.parseStruct()
 	case IDENTIFIER:
-		ret := &ASTIdent{}
+		ret := &Ident{}
 		ret.Span = p.curTok.Span
 		ret.Val = p.curTok.Val
 		p.next()
@@ -252,8 +253,8 @@ func (p *parser) parseIf() {
 	}
 }
 
-func (p *parser) parseStruct() ASTNode {
-	ret := &ASTStruct{}
+func (p *parser) parseStruct() Node {
+	ret := &Struct{}
 	ret.span = p.curTok.Span
 	p.expect(STRUCT)
 	p.expect('{')
@@ -267,18 +268,18 @@ func (p *parser) parseStruct() ASTNode {
 	return ret
 }
 
-func (p *parser) parseExpression() ASTNode {
+func (p *parser) parseExpression() Node {
 	return p.parsePrec1()
 }
 
-func (p *parser) parsePrec1() ASTNode {
+func (p *parser) parsePrec1() Node {
 	l := p.parsePrec2()
 	for {
 		switch p.curTok.Kind {
 		case OR:
 			p.next()
 			r := p.parsePrec2()
-			n := &ASTBinop{}
+			n := &Binop{}
 			n.op = p.curTok.Kind
 			n.l = l
 			n.r = r
@@ -291,14 +292,14 @@ func (p *parser) parsePrec1() ASTNode {
 	}
 }
 
-func (p *parser) parsePrec2() ASTNode {
+func (p *parser) parsePrec2() Node {
 	l := p.parsePrec3()
 	for {
 		switch p.curTok.Kind {
 		case AND:
 			p.next()
 			r := p.parsePrec3()
-			n := &ASTBinop{}
+			n := &Binop{}
 			n.op = p.curTok.Kind
 			n.l = l
 			n.r = r
@@ -311,14 +312,14 @@ func (p *parser) parsePrec2() ASTNode {
 	}
 }
 
-func (p *parser) parsePrec3() ASTNode {
+func (p *parser) parsePrec3() Node {
 	l := p.parsePrec4()
 	for {
 		switch p.curTok.Kind {
 		case EQ, NEQ, '<', LTEQ, '>', GTEQ:
 			p.next()
 			r := p.parsePrec4()
-			n := &ASTBinop{}
+			n := &Binop{}
 			n.op = p.curTok.Kind
 			n.l = l
 			n.r = r
@@ -330,14 +331,14 @@ func (p *parser) parsePrec3() ASTNode {
 		}
 	}
 }
-func (p *parser) parsePrec4() ASTNode {
+func (p *parser) parsePrec4() Node {
 	l := p.parsePrec5()
 	for {
 		switch p.curTok.Kind {
 		case '+', '-', '|', '^':
 			p.next()
 			r := p.parsePrec5()
-			n := &ASTBinop{}
+			n := &Binop{}
 			n.op = p.curTok.Kind
 			n.l = l
 			n.r = r
@@ -350,14 +351,14 @@ func (p *parser) parsePrec4() ASTNode {
 	}
 }
 
-func (p *parser) parsePrec5() ASTNode {
+func (p *parser) parsePrec5() Node {
 	l := p.parsePrimaryExpression()
 	for {
 		switch p.curTok.Kind {
 		case '*', '/', '%', LSHIFT, RSHIFT, '&':
 			p.next()
 			r := p.parsePrimaryExpression()
-			n := &ASTBinop{}
+			n := &Binop{}
 			n.op = p.curTok.Kind
 			n.l = l
 			n.r = r
@@ -370,23 +371,23 @@ func (p *parser) parsePrec5() ASTNode {
 	}
 }
 
-func (p *parser) parsePrimaryExpression() ASTNode {
-	var ret ASTNode = nil
+func (p *parser) parsePrimaryExpression() Node {
+	var ret Node = nil
 	switch p.curTok.Kind {
 	case IDENTIFIER:
-		v := &ASTIdent{}
+		v := &Ident{}
 		v.Val = p.curTok.Val
 		v.Span = p.curTok.Span
 		p.next()
 		ret = v
 	case CONSTANT:
-		v := &ASTConstant{}
+		v := &Constant{}
 		v.val = p.curTok.Val
 		v.span = p.curTok.Span
 		p.next()
 		ret = v
 	case STRING_LITERAL:
-		v := &ASTString{}
+		v := &String{}
 		v.val = p.curTok.Val
 		v.Span = p.curTok.Span
 		p.next()
@@ -402,11 +403,11 @@ func (p *parser) parsePrimaryExpression() ASTNode {
 	return nil
 }
 
-func (p *parser) parseCall(funcLike ASTNode) ASTNode {
-	call := &ASTCall{}
+func (p *parser) parseCall(funcLike Node) Node {
+	call := &Call{}
 	call.funcLike = funcLike
 	call.span = funcLike.GetSpan()
-	var args []ASTNode
+	var args []Node
 	p.expect('(')
 	for p.curTok.Kind != ')' && p.curTok.Kind != EOF {
 		args = append(args, p.parseExpression())

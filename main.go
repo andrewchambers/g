@@ -4,8 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/andrewchambers/g/parse"
-	"github.com/andrewchambers/g/reporting"
-	"github.com/andrewchambers/g/sem"
 	"io"
 	"os"
 	"runtime/pprof"
@@ -78,7 +76,7 @@ func main() {
 	if *tokenizeOnly {
 		tokenizeFile(input, output)
 	} else if *parseOnly {
-		parseFile(input, output)
+		_ = parseFile(input, output)
 	} else {
 		compileFile(input, output)
 	}
@@ -104,25 +102,22 @@ func tokenizeFile(sourceFile string, out io.WriteCloser) {
 	}
 }
 
-func parseFile(sourceFile string, out io.WriteCloser) *parse.ASTTUnit {
+func parseFile(sourceFile string, out io.WriteCloser) *parse.File {
 	defer out.Close()
 	f, err := os.Open(sourceFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open source file %s for lexing: %s\n", sourceFile, err)
 		os.Exit(1)
 	}
-
-	reportErrorAndQuit := func(message string, span parse.FileSpan) {
-		fmt.Printf("%s at %s:%d:%d\n", message, span.Path, span.Start.Line, span.Start.Col)
-		reporting.PrintPosAsError(span.Path, span.Start.Line, span.Start.Col)
-		os.Exit(1)
-	}
-
 	tokChan := parse.Lex(sourceFile, f)
-	return parse.Parse(tokChan, reportErrorAndQuit)
+	ast,err := parse.Parse(tokChan)
+	if err != nil {
+	    fmt.Fprintf(os.Stderr, "parse error: %s\n", err)
+	    os.Exit(1)
+	}
+	return ast
 }
 
 func compileFile(sourceFile string, out io.WriteCloser) {
-	ast := parseFile(sourceFile, out)
-	sem.Process(ast)
+	_ = parseFile(sourceFile, out)
 }

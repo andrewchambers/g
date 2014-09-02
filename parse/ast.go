@@ -13,132 +13,132 @@ func (s *SpanProvider) GetSpan() FileSpan {
 	return s.Span
 }
 
-type ASTNode interface {
+type Node interface {
 	String() string
 	GetSpan() FileSpan
 }
 
-type ASTTUnit struct {
+type File struct {
 	SpanProvider
 	Pkg string
 	//List of imports in the translation unit.
 	Imports []*Token
-	Body    []ASTNode
+	Body    []Node
 }
 
-func (n *ASTTUnit) addImport(t *Token) {
+func (n *File) addImport(t *Token) {
 	if t.Kind != STRING_LITERAL {
 		panic("internal error!")
 	}
 	n.Imports = append(n.Imports, t)
 }
 
-func (n *ASTTUnit) String() string {
+func (n *File) String() string {
 	return fmt.Sprintf("(TUnit)")
 }
 
-type ASTFor struct {
+type For struct {
 	span             FileSpan
-	init, cond, step ASTNode
-	body             []ASTNode
+	init, cond, step Node
+	body             []Node
 }
 
-func (n *ASTFor) GetSpan() FileSpan { return n.span }
-func (n *ASTFor) String() string {
-	return fmt.Sprintf("(for %s %s %s %s)", n.init, n.cond, n.step, n.body)
+func (n *For) GetSpan() FileSpan { return n.span }
+func (n *For) String() string {
+	return fmt.Sprintf("(For %s %s %s %s)", n.init, n.cond, n.step, n.body)
 }
 
-type ASTIf struct {
+type If struct {
 	span FileSpan
-	cond ASTNode
-	body []ASTNode
-	els  []ASTNode
+	cond Node
+	body []Node
+	els  []Node
 }
 
-func (n *ASTIf) GetSpan() FileSpan { return n.span }
-func (n *ASTIf) String() string {
+func (n *If) GetSpan() FileSpan { return n.span }
+func (n *If) String() string {
 	return fmt.Sprintf("(if %s %s %s)", n.cond, n.body, n.els)
 }
 
-type ASTBinop struct {
+type Binop struct {
 	span FileSpan
 	op   TokenKind
-	l, r ASTNode
+	l, r Node
 }
 
-func (n *ASTBinop) GetSpan() FileSpan { return n.span }
-func (n *ASTBinop) String() string {
+func (n *Binop) GetSpan() FileSpan { return n.span }
+func (n *Binop) String() string {
 	return "(BINOP)"
 }
 
-type ASTCall struct {
+type Call struct {
 	span     FileSpan
-	funcLike ASTNode
-	args     []ASTNode
+	funcLike Node
+	args     []Node
 }
 
-func (n *ASTCall) GetSpan() FileSpan { return n.span }
-func (n *ASTCall) String() string {
+func (n *Call) GetSpan() FileSpan { return n.span }
+func (n *Call) String() string {
 	return "(CALL)"
 }
 
-type ASTStruct struct {
+type Struct struct {
 	span  FileSpan
 	names []string
-	types []ASTNode
+	types []Node
 }
 
-func (n *ASTStruct) GetSpan() FileSpan { return n.span }
-func (n *ASTStruct) String() string {
+func (n *Struct) GetSpan() FileSpan { return n.span }
+func (n *Struct) String() string {
 	return "(STRUCT)"
 }
 
-type ASTIdent struct {
+type Ident struct {
 	SpanProvider
 	Val string
 }
 
-func (n *ASTIdent) String() string {
+func (n *Ident) String() string {
 	return n.Val
 }
 
-type ASTConstant struct {
+type Constant struct {
 	span FileSpan
 	val  string
 }
 
-func (n *ASTConstant) GetSpan() FileSpan { return n.span }
-func (n *ASTConstant) String() string {
+func (n *Constant) GetSpan() FileSpan { return n.span }
+func (n *Constant) String() string {
 	return n.val
 }
 
-type ASTString struct {
+type String struct {
 	SpanProvider
 	val string
 }
 
-func (n *ASTString) String() string {
+func (n *String) String() string {
 	return n.val
 }
 
-type ASTVarDecl struct {
+type VarDecl struct {
 	SpanProvider
 	val  string
-	init ASTNode
+	init Node
 }
 
-func (n *ASTVarDecl) String() string {
+func (n *VarDecl) String() string {
 	return "(VARDECL)"
 }
 
-type ASTFuncDecl struct {
+type FuncDecl struct {
 	SpanProvider
 	Name    string
-	RetType ASTNode
-	Args    []ASTNode
-	Body    []ASTNode
+	RetType Node
+	Args    []Node
+	Body    []Node
 }
 
-func (n *ASTFuncDecl) String() string {
+func (n *FuncDecl) String() string {
 	return "(FUNCDECL)"
 }
