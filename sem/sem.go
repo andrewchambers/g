@@ -1,25 +1,43 @@
 package sem
 
+//This package contains the semantic analysis code.
+//It emits a type checked and valid g semantic tree.
+//Or collects errors which can be reported to the user.
+
 import (
 	"fmt"
 	"github.com/andrewchambers/g/parse"
 )
 
-func Process(tunit *parse.ASTTUnit, onError func (string,parse.FileSpan)) {
-	state := newSemState(onError)
+//Type used for aborting the analysis
+type abortAnalysis struct{}
+
+func Process(tunit *parse.ASTTUnit) {
+	state := newSemState()
 	state.process(tunit)
 }
 
 type semState struct {
 	scope *scope
-	onError func (string,parse.FileSpan)
+	//Collection of errors and nil or position to report to the user.
+	//Only add errors to this via state.addError
+	errors         []error
+	errorPositions []*parse.FileSpan
 }
 
-func newSemState(onError func (string,parse.FileSpan)) *semState {
+func newSemState() *semState {
 	ret := &semState{}
 	ret.scope = newScope(nil)
-	ret.onError = onError
 	return ret
+}
+
+func (s *semState) addError(e error, pspan *parse.FileSpan) {
+	s.errors = append(s.errors, e)
+	s.errorPositions = append(s.errorPositions, pspan)
+}
+
+func abortSemAnalysis() {
+	panic(&abortAnalysis{})
 }
 
 type scope struct {
@@ -73,6 +91,11 @@ func (s *semState) popScope() {
 }
 
 func (state *semState) process(tunit *parse.ASTTUnit) {
+	defer func() {
+		if e := recover(); e != nil {
+			_ = e.(*abortAnalysis) // Will re-panic if not a breakout.
+		}
+	}()
 	state.defineGlobalSymbols(tunit)
 	for _, v := range tunit.Body {
 		switch v := v.(type) {
@@ -89,14 +112,16 @@ func (state *semState) defineGlobalSymbols(tunit *parse.ASTTUnit) {
 			sym := &Symbol{}
 			sym.DefinedAt = v.GetSpan()
 			sym.Name = v.Name
-			t,err := astNodeToGType(v)
+			t, err := astNodeToGType(v)
 			sym.Type = t
 			if err != nil {
-			    state.onError(err.Error(),v.Span)
+				state.addError(err, &v.Span)
+				abortSemAnalysis()
 			}
 			err = state.scope.define(sym.Name, sym)
 			if err != nil {
-				state.onError(err.Error(),v.Span)
+				state.addError(err, &v.Span)
+				abortSemAnalysis()
 			}
 		case *parse.ASTVarDecl:
 			panic("unimplemented var global")
@@ -105,7 +130,7 @@ func (state *semState) defineGlobalSymbols(tunit *parse.ASTTUnit) {
 	}
 
 }
-func astNodeToGType(n parse.ASTNode) (GType,error) {
+func astNodeToGType(n parse.ASTNode) (GType, error) {
 	switch v := n.(type) {
 	case *parse.ASTIdent:
 		switch {
@@ -113,18 +138,18 @@ func astNodeToGType(n parse.ASTNode) (GType,error) {
 			ret := &GInt{}
 			ret.Bits = 64
 			ret.Signed = true
-			return ret,nil
+			return ret, nil
 		default:
-			return nil,fmt.Errorf("%s is not a valid type",v.Val)
+			return nil, fmt.Errorf("%s is not a valid type", v.Val)
 		}
 	case *parse.ASTFuncDecl:
 		ret := &GFunc{}
-		t,err := astNodeToGType(n)
+		t, err := astNodeToGType(n)
 		ret.RetType = t
 		if err != nil {
-		    return nil,err
+			return nil, err
 		}
-		return ret,nil
+		return ret, nil
 	default:
 		panic("unimplemented error")
 	}

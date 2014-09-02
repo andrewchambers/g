@@ -124,10 +124,5 @@ func parseFile(sourceFile string, out io.WriteCloser) *parse.ASTTUnit {
 
 func compileFile(sourceFile string, out io.WriteCloser) {
 	ast := parseFile(sourceFile, out)
-	reportErrorAndQuit := func(message string, span parse.FileSpan) {
-		fmt.Printf("%s at %s:%d:%d\n", message, span.Path, span.Start.Line, span.Start.Col)
-		reporting.PrintPosAsError(span.Path, span.Start.Line, span.Start.Col)
-		os.Exit(1)
-	}
-	sem.Process(ast,reportErrorAndQuit)
+	sem.Process(ast)
 }

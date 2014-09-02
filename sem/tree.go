@@ -15,6 +15,7 @@ type SemNode interface {
 }
 
 type SemFunction struct {
+	Name       string
 	Statements []SemNode
 }
 
