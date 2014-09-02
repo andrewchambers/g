@@ -5,18 +5,20 @@ import (
 	"github.com/andrewchambers/g/parse"
 )
 
-func Process(tunit *parse.ASTTUnit) {
-	state := newSemState()
+func Process(tunit *parse.ASTTUnit, onError func (string,parse.FileSpan)) {
+	state := newSemState(onError)
 	state.process(tunit)
 }
 
 type semState struct {
 	scope *scope
+	onError func (string,parse.FileSpan)
 }
 
-func newSemState() *semState {
+func newSemState(onError func (string,parse.FileSpan)) *semState {
 	ret := &semState{}
 	ret.scope = newScope(nil)
+	ret.onError = onError
 	return ret
 }
 
@@ -87,10 +89,14 @@ func (state *semState) defineGlobalSymbols(tunit *parse.ASTTUnit) {
 			sym := &Symbol{}
 			sym.DefinedAt = v.GetSpan()
 			sym.Name = v.Name
-			sym.Type = astNodeToGType(v)
-			err := state.scope.define(sym.Name, sym)
+			t,err := astNodeToGType(v)
+			sym.Type = t
 			if err != nil {
-				panic(err)
+			    state.onError(err.Error(),v.Span)
+			}
+			err = state.scope.define(sym.Name, sym)
+			if err != nil {
+				state.onError(err.Error(),v.Span)
 			}
 		case *parse.ASTVarDecl:
 			panic("unimplemented var global")
@@ -99,7 +105,7 @@ func (state *semState) defineGlobalSymbols(tunit *parse.ASTTUnit) {
 	}
 
 }
-func astNodeToGType(n parse.ASTNode) GType {
+func astNodeToGType(n parse.ASTNode) (GType,error) {
 	switch v := n.(type) {
 	case *parse.ASTIdent:
 		switch {
@@ -107,14 +113,18 @@ func astNodeToGType(n parse.ASTNode) GType {
 			ret := &GInt{}
 			ret.Bits = 64
 			ret.Signed = true
-			return ret
+			return ret,nil
 		default:
-			panic("unimplemented error")
+			return nil,fmt.Errorf("%s is not a valid type",v.Val)
 		}
 	case *parse.ASTFuncDecl:
 		ret := &GFunc{}
-		ret.RetType = astNodeToGType(n)
-		return ret
+		t,err := astNodeToGType(n)
+		ret.RetType = t
+		if err != nil {
+		    return nil,err
+		}
+		return ret,nil
 	default:
 		panic("unimplemented error")
 	}
