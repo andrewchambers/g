@@ -114,7 +114,7 @@ func (p *parser) parseTopLevelDeclarations() {
 		case CONST:
 			p.parseConst()
 		default:
-			p.syntaxError("expected var, const or func", p.curTok.Span)
+			p.syntaxError("expected var, type, const or func", p.curTok.Span)
 		}
 	}
 }

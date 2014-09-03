@@ -74,13 +74,13 @@ func (n *File) Dump(d uint) string {
 	} 
 	ret += ws(d + 2) + "TypeDecls:\n"
 	for _,v := range n.TypeDecls {
-	    ret += v.Dump(d + 4) + "\n"
+	    ret += v.Dump(d + 4)
 	} 
 	ret += ws(d + 2) + "ConstDecls:\n"
 	ret += ws(d + 2) + "VarDecls:\n"
 	ret += ws(d + 2) + "FuncDecls:\n"
 	for _,f := range n.FuncDecls {
-	    ret += f.Dump(d + 4) + "\n"
+	    ret += f.Dump(d + 4)
 	}
 	return ret
 }
@@ -199,7 +199,7 @@ type TypeDecl struct {
 func (n *TypeDecl) Dump(d uint) string {
 	ret := ws(d) + "TypeDecl:\n"
 	ret += ws(d + 2) + "Name: " + n.Name + "\n"
-	ret += n.Type.Dump(d + 4) + "\n"
+	ret += n.Type.Dump(d + 4)
 	return ret
 }
 
@@ -249,14 +249,14 @@ func (n *FuncDecl) Dump(d uint) string {
 	ret = ws(d) + "FuncDecl:\n"
 	ret += ws(d + 2) + "Name: " + n.Name + "\n"
 	ret += ws(d + 2) + "RetType:\n"
-	ret += n.RetType.Dump(d + 4) + " \n"
+	ret += n.RetType.Dump(d + 4)
 	ret += ws(d + 2) + "Arguments:\n"
 	for idx,name := range n.ArgNames {
-	    ret += ws(d + 4) + name + n.ArgTypes[idx].Dump(0) + "\n"
+	    ret += ws(d + 4) + name + n.ArgTypes[idx].Dump(0)
 	}
 	ret += ws(d + 2) + "Statements:\n"
 	for _,statement := range n.Body {
-	    ret += statement.Dump(d + 4) + "\n"
+	    ret += statement.Dump(d + 4)
 	}
 	return ret
 }
