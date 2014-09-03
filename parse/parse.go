@@ -23,12 +23,6 @@ func Parse(c chan *Token) (*File,error) {
 			}
 		}
 	}()
-	defer func() {
-		if e := recover(); e != nil {
-			_ = e.(*breakout) // Will re-panic if not a breakout.
-		}
-
-	}()
 	p := &parser{c: c}
 	p.next()
 	p.next()
@@ -64,6 +58,12 @@ func (p *parser) expect(k TokenKind) {
 }
 
 func (p *parser) parseFile() {
+	defer func() {
+		if e := recover(); e != nil {
+			_ = e.(*breakout) // Will re-panic if not a breakout.
+		}
+
+	}()
 	p.ast = &File{}
 	p.expect(PACKAGE)
 	//This span is bogus, but a File is just the whole file.
@@ -71,7 +71,7 @@ func (p *parser) parseFile() {
 	p.ast.Pkg = p.curTok.Val
 	p.expect(IDENTIFIER)
 	p.parseImportList()
-	p.parseDeclarations()
+	p.parseTopLevelDeclarations()
 }
 
 func (p *parser) parseImportList() {
@@ -80,27 +80,35 @@ func (p *parser) parseImportList() {
 		switch p.curTok.Kind {
 		case '(':
 			p.next()
-			for p.curTok.Kind == STRING_LITERAL {
-				p.ast.addImport(p.curTok)
-				p.next()
+			for p.curTok.Kind == STRING {
+				p.ast.addImport(p.parseString())
 			}
 			p.expect(')')
-		case STRING_LITERAL:
-			p.ast.addImport(p.curTok)
-			p.next()
+		case STRING:
+			p.ast.addImport(p.parseString())
 		default:
 			p.syntaxError("expected string literal or '('", p.curTok.Span)
 		}
 	}
 }
 
-func (p *parser) parseDeclarations() {
+func (p *parser) parseString() *String {
+    ret := &String{}
+    ret.Span = p.curTok.Span
+    ret.Val = p.curTok.Val
+    p.expect(STRING)
+    return ret
+}
+
+func (p *parser) parseTopLevelDeclarations() {
 	for p.curTok.Kind != EOF {
 		switch p.curTok.Kind {
 		case TYPE:
-			p.parseTypeDecl()
+			t := p.parseTypeDecl()
+			p.ast.addTypeDecl(t)
 		case FUNC:
-			p.parseFuncDecl()
+			f := p.parseFuncDecl()
+			p.ast.addFuncDecl(f)
 		case VAR:
 			p.parseVarDecl()
 		case CONST:
@@ -121,22 +129,29 @@ func (p *parser) parseVarDecl() {
 	}
 }
 
-func (p *parser) parseTypeDecl() {
+func (p *parser) parseTypeDecl() *TypeDecl {
+	ret := &TypeDecl{}
+	ret.Span = p.curTok.Span
 	p.expect(TYPE)
+	ret.Name = p.curTok.Val
 	p.expect(IDENTIFIER)
-	p.parseType(false)
+	ret.Type = p.parseType(false)
+	return ret
 }
 
-func (p *parser) parseFuncDecl() {
+func (p *parser) parseFuncDecl() *FuncDecl {
+	ret := &FuncDecl{}
 	p.expect(FUNC)
+	ret.Name = p.curTok.Val
 	p.expect(IDENTIFIER)
 	p.expect('(')
-	p.parseArgList()
+	p.parseArgList(ret)
 	p.expect(')')
-	p.parseFuncReturnType()
+	ret.RetType = p.parseType(true)
 	p.expect('{')
-	p.parseStatementList()
+	p.parseStatementList(ret)
 	p.expect('}')
+	return ret
 }
 
 func (p *parser) parseType(allowEmpty bool) Node {
@@ -144,9 +159,9 @@ func (p *parser) parseType(allowEmpty bool) Node {
 	case STRUCT:
 		return p.parseStruct()
 	case IDENTIFIER:
-		ret := &Ident{}
+		ret := &TypeAlias{}
 		ret.Span = p.curTok.Span
-		ret.Val = p.curTok.Val
+		ret.Name = p.curTok.Val
 		p.next()
 		return ret
 	default:
@@ -158,14 +173,12 @@ func (p *parser) parseType(allowEmpty bool) Node {
 	return nil
 }
 
-func (p *parser) parseFuncReturnType() {
-	p.parseType(true)
-}
-
-func (p *parser) parseArgList() {
+func (p *parser) parseArgList(f *FuncDecl) {
 	for p.curTok.Kind == IDENTIFIER {
+		name := p.curTok.Val
 		p.next()
-		p.parseType(false)
+		t := p.parseType(false)
+		f.addArgument(name,t)
 		if p.curTok.Kind == ',' {
 			p.next()
 		}
@@ -176,22 +189,27 @@ func (p *parser) parseConst() {
 	p.expect(CONST)
 }
 
-func (p *parser) parseStatementList() {
+func (p *parser) parseStatementList(sl StatementList) {
 	for p.curTok.Kind != '}' && p.curTok.Kind != EOF {
-		p.parseStatement()
+		s := p.parseStatement()
+		sl.addStatement(s)
 	}
 }
 
-func (p *parser) parseStatement() {
+func (p *parser) parseStatement() Node {
 	switch p.curTok.Kind {
 	case RETURN:
+	    r := &Return{}
+	    r.Span = p.curTok.Span
 		p.next()
-		p.parseExpression()
+		r.Expr = p.parseExpression()
+		r.Span.End = p.curTok.Span.End
 		p.expect(';')
+		return r
 	case VAR:
 		p.parseVarDecl()
 		p.expect(';')
-	case IDENTIFIER, CONSTANT, STRING_LITERAL:
+	case IDENTIFIER, CONSTANT, STRING:
 		p.parseSimpleStatement()
 		p.expect(';')
 	case FOR:
@@ -201,56 +219,7 @@ func (p *parser) parseStatement() {
 	default:
 		p.syntaxError("error parsing statement", p.curTok.Span)
 	}
-}
-
-func (p *parser) parseSimpleStatement() {
-	p.parseExpression()
-	switch p.curTok.Kind {
-	case '=', ADDASSIGN, MULASSIGN:
-		p.next()
-		p.parseExpression()
-	case INC, DEC:
-		p.next()
-	default:
-	}
-
-}
-
-func (p *parser) parseFor() {
-	p.expect(FOR)
-	if p.curTok.Kind != '{' {
-		p.parseSimpleStatement()
-	}
-	if p.curTok.Kind == ';' {
-		p.next()
-		p.parseExpression()
-		p.expect(';')
-		p.parseSimpleStatement()
-	}
-	p.expect('{')
-	p.parseStatementList()
-	p.expect('}')
-}
-
-func (p *parser) parseIf() {
-	p.expect(IF)
-	p.parseExpression()
-	p.expect('{')
-	p.parseStatementList()
-	p.expect('}')
-	if p.curTok.Kind == ELSE {
-		p.next()
-		switch p.curTok.Kind {
-		case IF:
-			p.parseIf()
-		case '{':
-			p.expect('{')
-			p.parseStatementList()
-			p.expect('}')
-		default:
-			p.syntaxError("If ", p.curTok.Span)
-		}
-	}
+	panic("unreachable")
 }
 
 func (p *parser) parseStruct() Node {
@@ -266,6 +235,58 @@ func (p *parser) parseStruct() Node {
 	ret.span.End = p.curTok.Span.End
 	p.expect('}')
 	return ret
+}
+
+
+func (p *parser) parseSimpleStatement() Node {
+	ret := p.parseExpression()
+	switch p.curTok.Kind {
+	case '=', ADDASSIGN, MULASSIGN:
+		p.next()
+		p.parseExpression()
+	case INC, DEC:
+		p.next()
+	default:
+	}
+	return ret
+
+}
+
+func (p *parser) parseFor() {
+	p.expect(FOR)
+	if p.curTok.Kind != '{' {
+		p.parseSimpleStatement()
+	}
+	if p.curTok.Kind == ';' {
+		p.next()
+		p.parseExpression()
+		p.expect(';')
+		p.parseSimpleStatement()
+	}
+	p.expect('{')
+	p.parseStatementList(nil)
+	p.expect('}')
+}
+
+func (p *parser) parseIf() {
+	p.expect(IF)
+	p.parseExpression()
+	p.expect('{')
+	p.parseStatementList(nil)
+	p.expect('}')
+	if p.curTok.Kind == ELSE {
+		p.next()
+		switch p.curTok.Kind {
+		case IF:
+			p.parseIf()
+		case '{':
+			p.expect('{')
+			p.parseStatementList(nil)
+			p.expect('}')
+		default:
+			p.syntaxError("If ", p.curTok.Span)
+		}
+	}
 }
 
 func (p *parser) parseExpression() Node {
@@ -382,16 +403,12 @@ func (p *parser) parsePrimaryExpression() Node {
 		ret = v
 	case CONSTANT:
 		v := &Constant{}
-		v.val = p.curTok.Val
-		v.span = p.curTok.Span
-		p.next()
-		ret = v
-	case STRING_LITERAL:
-		v := &String{}
-		v.val = p.curTok.Val
+		v.Val = p.curTok.Val
 		v.Span = p.curTok.Span
 		p.next()
 		ret = v
+	case STRING:
+		ret = p.parseString()
 	default:
 		p.syntaxError("error parsing expression", p.curTok.Span)
 	}
@@ -400,7 +417,7 @@ func (p *parser) parsePrimaryExpression() Node {
 		ret = p.parseCall(ret)
 	}
 
-	return nil
+	return ret
 }
 
 func (p *parser) parseCall(funcLike Node) Node {

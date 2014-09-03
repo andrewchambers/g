@@ -72,18 +72,20 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	defer output.Close()
 
 	if *tokenizeOnly {
 		tokenizeFile(input, output)
 	} else if *parseOnly {
-		_ = parseFile(input, output)
+		fmt.Fprintln(output,"Parsing file " + input)
+		ast := parseFile(input, output)
+		fmt.Fprintln(output,ast.Dump(0))
 	} else {
 		compileFile(input, output)
 	}
 }
 
 func tokenizeFile(sourceFile string, out io.WriteCloser) {
-	defer out.Close()
 	f, err := os.Open(sourceFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open source file %s for lexing: %s\n", sourceFile, err)
@@ -103,7 +105,6 @@ func tokenizeFile(sourceFile string, out io.WriteCloser) {
 }
 
 func parseFile(sourceFile string, out io.WriteCloser) *parse.File {
-	defer out.Close()
 	f, err := os.Open(sourceFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open source file %s for lexing: %s\n", sourceFile, err)

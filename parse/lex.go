@@ -297,7 +297,7 @@ func (l *lexer) readStringLiteral() {
 			break
 		}
 	}
-	l.sendTok(STRING_LITERAL, buff.String())
+	l.sendTok(STRING, buff.String())
 }
 
 func (l *lexer) skipWhiteSpace() {
