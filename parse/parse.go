@@ -210,8 +210,9 @@ func (p *parser) parseStatement() Node {
 		p.parseVarDecl()
 		p.expect(';')
 	case IDENTIFIER, CONSTANT, STRING:
-		p.parseSimpleStatement()
+		ret := p.parseSimpleStatement()
 		p.expect(';')
+		return ret
 	case FOR:
 		p.parseFor()
 	case IF:
@@ -304,8 +305,8 @@ func (p *parser) parsePrec1() Node {
 			n.op = p.curTok.Kind
 			n.l = l
 			n.r = r
-			n.span = l.GetSpan()
-			n.span.End = r.GetSpan().End
+			n.Span = l.GetSpan()
+			n.Span.End = r.GetSpan().End
 			l = n
 		default:
 			return l
@@ -324,8 +325,8 @@ func (p *parser) parsePrec2() Node {
 			n.op = p.curTok.Kind
 			n.l = l
 			n.r = r
-			n.span = l.GetSpan()
-			n.span.End = r.GetSpan().End
+			n.Span = l.GetSpan()
+			n.Span.End = r.GetSpan().End
 			l = n
 		default:
 			return l
@@ -344,8 +345,8 @@ func (p *parser) parsePrec3() Node {
 			n.op = p.curTok.Kind
 			n.l = l
 			n.r = r
-			n.span = l.GetSpan()
-			n.span.End = r.GetSpan().End
+			n.Span = l.GetSpan()
+			n.Span.End = r.GetSpan().End
 			l = n
 		default:
 			return l
@@ -363,8 +364,8 @@ func (p *parser) parsePrec4() Node {
 			n.op = p.curTok.Kind
 			n.l = l
 			n.r = r
-			n.span = l.GetSpan()
-			n.span.End = r.GetSpan().End
+			n.Span = l.GetSpan()
+			n.Span.End = r.GetSpan().End
 			l = n
 		default:
 			return l
@@ -383,8 +384,8 @@ func (p *parser) parsePrec5() Node {
 			n.op = p.curTok.Kind
 			n.l = l
 			n.r = r
-			n.span = l.GetSpan()
-			n.span.End = r.GetSpan().End
+			n.Span = l.GetSpan()
+			n.Span.End = r.GetSpan().End
 			l = n
 		default:
 			return l
@@ -412,18 +413,27 @@ func (p *parser) parsePrimaryExpression() Node {
 	default:
 		p.syntaxError("error parsing expression", p.curTok.Span)
 	}
-
-	if p.curTok.Kind == '(' {
-		ret = p.parseCall(ret)
-	}
+    
+    loop:
+    for {
+        switch p.curTok.Kind {
+        case '(':
+            ret = p.parseCall(ret)
+        case '.':
+            ret = p.parseSelector(ret)
+        default:
+            break loop
+        }
+    }
+    
 
 	return ret
 }
 
-func (p *parser) parseCall(funcLike Node) Node {
+func (p *parser) parseCall(funcLike Node) *Call {
 	call := &Call{}
-	call.funcLike = funcLike
-	call.span = funcLike.GetSpan()
+	call.FuncLike = funcLike
+	call.Span = funcLike.GetSpan()
 	var args []Node
 	p.expect('(')
 	for p.curTok.Kind != ')' && p.curTok.Kind != EOF {
@@ -432,8 +442,19 @@ func (p *parser) parseCall(funcLike Node) Node {
 			p.next()
 		}
 	}
-	call.span.End = p.curTok.Span.End
+	call.Span.End = p.curTok.Span.End
 	p.expect(')')
-	call.args = args
+	call.Args = args
 	return call
+}
+
+func (p *parser) parseSelector(l Node) *Selector {
+	sel := &Selector{}
+	p.expect('.')
+	sel.Span = l.GetSpan()
+	sel.Name = p.curTok.Val
+	sel.Expr = l
+	sel.Span.End = p.curTok.Span.End
+	p.expect(IDENTIFIER)
+	return sel
 }

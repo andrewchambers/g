@@ -109,25 +109,54 @@ func (n *If) Dump(depth uint) string {
 }
 
 type Binop struct {
-	span FileSpan
+	SpanProvider
 	op   TokenKind
 	l, r Node
 }
 
-func (n *Binop) GetSpan() FileSpan { return n.span }
 func (n *Binop) Dump(depth uint) string {
 	return "(BINOP)"
 }
 
-type Call struct {
-	span     FileSpan
-	funcLike Node
-	args     []Node
+type Unop struct {
+	SpanProvider
+	Op   TokenKind
+	Expr Node
 }
 
-func (n *Call) GetSpan() FileSpan { return n.span }
-func (n *Call) Dump(depth uint) string {
-	return "(CALL)"
+func (n *Unop) Dump(depth uint) string {
+	return "(UNOP)"
+}
+
+type Selector struct {
+	SpanProvider
+	Name string
+	Expr Node
+}
+
+func (n *Selector) Dump(d uint) string {
+	ret := ws(d) + "Selector:\n"
+	ret += n.Expr.Dump(d + 2)
+	ret += ws(d + 2) + n.Name + "\n"
+	return ret
+}
+
+
+type Call struct {
+	SpanProvider
+	FuncLike Node
+	Args     []Node
+}
+
+func (n *Call) Dump(d uint) string {
+	ret := ws(d) + "Call:\n"
+	ret += ws(d + 2) + "FuncLike:\n"
+	ret += n.FuncLike.Dump(d + 4)
+	ret += ws(d + 2) + "Args:\n"
+	for _,v := range n.Args {
+	    ret += v.Dump(d+4)
+	}
+	return ret
 }
 
 type TypeAlias struct {
@@ -140,7 +169,6 @@ func (n *TypeAlias) Dump(d uint) string {
 	ret += ws(d + 2) + n.Name + "\n"
 	return ret
 }
-
 
 type Struct struct {
 	span  FileSpan
@@ -158,8 +186,8 @@ type Ident struct {
 	Val string
 }
 
-func (n *Ident) Dump(depth uint) string {
-	return n.Val
+func (n *Ident) Dump(d uint) string {
+	return ws(d) + n.Val + "\n"
 }
 
 type Constant struct {
@@ -177,7 +205,7 @@ type String struct {
 }
 
 func (n *String) Dump(d uint) string {
-	return ws(d) + n.Val
+	return ws(d) + n.Val + "\n"
 }
 
 type VarDecl struct {
