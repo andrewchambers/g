@@ -1,4 +1,4 @@
-package emit
+package types
 
 type GType interface {
 }

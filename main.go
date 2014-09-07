@@ -4,7 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"github.com/andrewchambers/g/parse"
+	"github.com/andrewchambers/g/emit"
+	"github.com/andrewchambers/g/llvm"
 	"io"
+	"bufio"
 	"os"
 	"runtime/pprof"
 )
@@ -26,7 +29,6 @@ func printUsage() {
 
 func main() {
 	flag.Usage = printUsage
-
 	tokenizeOnly := flag.Bool("T", false, "Tokenize only (For debugging).")
 	parseOnly := flag.Bool("A", false, "Print AST (For debugging).")
 	doProfiling := flag.Bool("P", false, "Profile the compiler (For debugging).")
@@ -77,8 +79,7 @@ func main() {
 	if *tokenizeOnly {
 		tokenizeFile(input, output)
 	} else if *parseOnly {
-		fmt.Fprintln(output,"Parsing file " + input)
-		ast := parseFile(input, output)
+		ast := parseFile(input)
 		fmt.Fprintln(output,ast.Dump(0))
 	} else {
 		compileFile(input, output)
@@ -104,7 +105,7 @@ func tokenizeFile(sourceFile string, out io.WriteCloser) {
 	}
 }
 
-func parseFile(sourceFile string, out io.WriteCloser) *parse.File {
+func parseFile(sourceFile string) *parse.File {
 	f, err := os.Open(sourceFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open source file %s for lexing: %s\n", sourceFile, err)
@@ -120,5 +121,7 @@ func parseFile(sourceFile string, out io.WriteCloser) *parse.File {
 }
 
 func compileFile(sourceFile string, out io.WriteCloser) {
-	_ = parseFile(sourceFile, out)
+	ast := parseFile(sourceFile)
+	mod := emit.EmitModule(ast)
+	llvm.EmitLLVM(out,mod)
 }
