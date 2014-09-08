@@ -137,7 +137,7 @@ func (e *emitter) funcDeclToGType(f *parse.FuncDecl) (*GFunc,error) {
     ret := &GFunc{}
     for _,t := range f.ArgTypes {
         gty,err := e.parseNodeToGType(t)
-        if err == nil {
+        if err != nil {
             return nil,err
         }
         ret.ArgTypes = append(ret.ArgTypes,gty)
