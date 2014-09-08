@@ -57,8 +57,8 @@ type TypeAlias struct {
 
 type Binop struct {
 	SpanProvider
-	op   TokenKind
-	l, r Node
+	Op   TokenKind
+	L, R Node
 }
 
 type Constant struct {

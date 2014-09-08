@@ -305,9 +305,9 @@ func (p *parser) parsePrec1() Node {
 			p.next()
 			r := p.parsePrec2()
 			n := &Binop{}
-			n.op = p.curTok.Kind
-			n.l = l
-			n.r = r
+			n.Op = p.curTok.Kind
+			n.L = l
+			n.R = r
 			n.Span = l.GetSpan()
 			n.Span.End = r.GetSpan().End
 			l = n
@@ -325,9 +325,9 @@ func (p *parser) parsePrec2() Node {
 			p.next()
 			r := p.parsePrec3()
 			n := &Binop{}
-			n.op = p.curTok.Kind
-			n.l = l
-			n.r = r
+			n.Op = p.curTok.Kind
+			n.L = l
+			n.R = r
 			n.Span = l.GetSpan()
 			n.Span.End = r.GetSpan().End
 			l = n
@@ -345,9 +345,9 @@ func (p *parser) parsePrec3() Node {
 			p.next()
 			r := p.parsePrec4()
 			n := &Binop{}
-			n.op = p.curTok.Kind
-			n.l = l
-			n.r = r
+			n.Op = p.curTok.Kind
+			n.L = l
+			n.R = r
 			n.Span = l.GetSpan()
 			n.Span.End = r.GetSpan().End
 			l = n
@@ -364,9 +364,9 @@ func (p *parser) parsePrec4() Node {
 			p.next()
 			r := p.parsePrec5()
 			n := &Binop{}
-			n.op = p.curTok.Kind
-			n.l = l
-			n.r = r
+			n.Op = p.curTok.Kind
+			n.L = l
+			n.R = r
 			n.Span = l.GetSpan()
 			n.Span.End = r.GetSpan().End
 			l = n
@@ -384,9 +384,9 @@ func (p *parser) parsePrec5() Node {
 			p.next()
 			r := p.parsePrimaryExpression()
 			n := &Binop{}
-			n.op = p.curTok.Kind
-			n.l = l
-			n.r = r
+			n.Op = p.curTok.Kind
+			n.L = l
+			n.R = r
 			n.Span = l.GetSpan()
 			n.Span.End = r.GetSpan().End
 			l = n

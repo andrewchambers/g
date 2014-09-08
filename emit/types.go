@@ -28,6 +28,9 @@ type GFunc struct {
 	ArgTypes []GType
 }
 
+type GConstant struct {
+}
+
 type GArray struct {
 	Dim     int64
 	ArrayOf GType
@@ -35,6 +38,11 @@ type GArray struct {
 
 func NewGInt(bits uint, signed bool) *GInt {
 	return &GInt{bits, signed}
+}
+
+func (*GConstant) Equals(other GType) bool {
+	_, ok := other.(*GConstant)
+	return ok
 }
 
 func (i *GInt) Equals(other GType) bool {

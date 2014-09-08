@@ -8,29 +8,70 @@ import (
 )
 
 type emitter struct {
+	gscope   *scope
 	curscope *scope
 	out      *bufio.Writer
 
 	curFuncType *GFunc
 }
 
+type Value interface {
+    getLLVMRepr() string
+    isLVal() bool
+    getGType() GType
+}
+
 type exprValue struct {
-	llvmVal string
+	llvmName string
 	lval    bool
 	gType   GType
+}
+
+type exprConstant struct {
+	val string
+}
+
+func (v *exprValue) getLLVMRepr() string {
+    return v.llvmName
+}
+
+func (v *exprValue) isLVal() bool {
+    return v.lval
+}
+
+func (v *exprValue) getGType() GType {
+    return v.gType
+}
+
+func (c *exprConstant) getLLVMRepr() string {
+    return c.val 
+}
+
+func (c *exprConstant) isLVal() bool {
+    return false
+}
+
+func (c *exprConstant) getGType() GType {
+    return &GConstant{}
 }
 
 func newEmitter(out *bufio.Writer) *emitter {
 	ret := &emitter{}
 	ret.curscope = newScope(nil)
+	ret.gscope = ret.curscope
 	ret.out = out
 	ret.addBuiltinTypes()
 	return ret
 }
 
 func (e *emitter) addBuiltinTypes() {
-	e.curscope.declareType("int", &GInt{32, true})
-	e.curscope.declareType("uint", &GInt{32, false})
+	e.curscope.declareType("int", &GInt{e.getIntWidth(), true})
+	e.curscope.declareType("uint", &GInt{e.getIntWidth(), false})
+}
+
+//XXX shift to arch type
+func (e *emitter) getIntWidth() uint {
+    return 64
 }
 
 func (e *emitter) pushScope() {
@@ -118,24 +159,78 @@ func (e *emitter) emitStatement(stmt parse.Node) {
 
 func (e *emitter) emitReturn(r *parse.Return) {
 	v := e.emitExpression(r.Expr)
-	if !v.gType.Equals(e.curFuncType.RetType) {
-		panic("failed type check")
+	var llvmType string
+	_, ok :=  v.getGType().(*GConstant)
+	if ok {
+	    _,ok := e.curFuncType.RetType.(*GInt)
+	    if !ok {
+	        // XXX
+	        panic("cannot cast constant to return type")
+	    }
+	    llvmType = gTypeToLLVM(e.curFuncType.RetType)
+	} else {
+	    if !v.getGType().Equals(e.curFuncType.RetType) {
+		    panic("failed type check")
+	    }
+	    llvmType = gTypeToLLVM(v.getGType())
+	    
 	}
-	e.emiti("ret %s %s\n", gTypeToLLVM(v.gType), v.llvmVal)
+	e.emiti("ret %s %s\n",llvmType ,v.getLLVMRepr())
 }
 
-func (e *emitter) emitExpression(expr parse.Node) *exprValue {
+func (e *emitter) emitExpression(expr parse.Node) Value {
 	switch expr := expr.(type) {
 	case *parse.Constant:
-		//XXX
-		v := &exprValue{}
-		v.llvmVal = fmt.Sprintf("%s", expr.Val)
-		v.gType = NewGInt(32, true)
+		v := &exprConstant{expr.Val}
 		return v
+	case *parse.Binop:
+		return e.emitBinop(expr)
 	default:
 		panic("unhandled...")
 	}
 }
+
+func isConstantVal(v Value) bool {
+    _,ok := v.(*exprConstant)
+    return ok
+}
+
+func isIntType(t GType) bool {
+    _,ok := t.(*GInt)
+    return ok
+}
+
+func (e *emitter) emitBinop(b *parse.Binop) Value {
+
+
+    l := e.emitExpression(b.L)
+    r := e.emitExpression(b.R)
+    
+    if isConstantVal(l) && isConstantVal(r) {
+        return foldConstantBinop(b.Op,l.(*exprConstant),r.(*exprConstant))
+    }
+    
+    lstr := fmt.Sprintf("%s %s",gTypeToLLVM(l.getGType()),l.getLLVMRepr())
+    rstr := fmt.Sprintf("%s %s",gTypeToLLVM(r.getGType()),r.getLLVMRepr())
+    
+    if !l.getGType().Equals(r.getGType()) {
+        panic("arithmetic on incompatible types")
+    }
+    
+    if !isIntType(l.getGType()) {
+        panic("arithmetic on non int type")
+    }
+    
+    switch b.Op {
+        case '+':
+            e.emiti("new = add %s %s\n",lstr,rstr)
+        default:
+            panic("unreachable")
+    }
+    
+    panic("unreachable")
+}
+
 
 func (e *emitter) funcDeclToGType(f *parse.FuncDecl) (*GFunc, error) {
 	ret := &GFunc{}
