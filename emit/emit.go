@@ -16,43 +16,43 @@ type emitter struct {
 }
 
 type Value interface {
-    getLLVMRepr() string
-    isLVal() bool
-    getGType() GType
+	getLLVMRepr() string
+	isLVal() bool
+	getGType() GType
 }
 
 type exprValue struct {
 	llvmName string
-	lval    bool
-	gType   GType
+	lval     bool
+	gType    GType
 }
 
 type exprConstant struct {
-	val string
+	val int64
 }
 
 func (v *exprValue) getLLVMRepr() string {
-    return v.llvmName
+	return v.llvmName
 }
 
 func (v *exprValue) isLVal() bool {
-    return v.lval
+	return v.lval
 }
 
 func (v *exprValue) getGType() GType {
-    return v.gType
+	return v.gType
 }
 
 func (c *exprConstant) getLLVMRepr() string {
-    return c.val 
+	return fmt.Sprintf("%v", c.val)
 }
 
 func (c *exprConstant) isLVal() bool {
-    return false
+	return false
 }
 
 func (c *exprConstant) getGType() GType {
-    return &GConstant{}
+	return &GConstant{}
 }
 
 func newEmitter(out *bufio.Writer) *emitter {
@@ -71,7 +71,7 @@ func (e *emitter) addBuiltinTypes() {
 
 //XXX shift to arch type
 func (e *emitter) getIntWidth() uint {
-    return 64
+	return 64
 }
 
 func (e *emitter) pushScope() {
@@ -96,6 +96,8 @@ func EmitModule(out *bufio.Writer, file *parse.File) error {
 	if err != nil {
 		return err
 	}
+	e.emit("; compiled from file %s\n", file.Span.Path)
+	e.emit("target triple = \"x86_64-pc-linux-gnu\"\n\n")
 	for _, fd := range file.FuncDecls {
 		err = e.emitFuncDecl(fd)
 		if err != nil {
@@ -160,22 +162,22 @@ func (e *emitter) emitStatement(stmt parse.Node) {
 func (e *emitter) emitReturn(r *parse.Return) {
 	v := e.emitExpression(r.Expr)
 	var llvmType string
-	_, ok :=  v.getGType().(*GConstant)
+	_, ok := v.getGType().(*GConstant)
 	if ok {
-	    _,ok := e.curFuncType.RetType.(*GInt)
-	    if !ok {
-	        // XXX
-	        panic("cannot cast constant to return type")
-	    }
-	    llvmType = gTypeToLLVM(e.curFuncType.RetType)
+		_, ok := e.curFuncType.RetType.(*GInt)
+		if !ok {
+			// XXX
+			panic("cannot cast constant to return type")
+		}
+		llvmType = gTypeToLLVM(e.curFuncType.RetType)
 	} else {
-	    if !v.getGType().Equals(e.curFuncType.RetType) {
-		    panic("failed type check")
-	    }
-	    llvmType = gTypeToLLVM(v.getGType())
-	    
+		if !v.getGType().Equals(e.curFuncType.RetType) {
+			panic("failed type check")
+		}
+		llvmType = gTypeToLLVM(v.getGType())
+
 	}
-	e.emiti("ret %s %s\n",llvmType ,v.getLLVMRepr())
+	e.emiti("ret %s %s\n", llvmType, v.getLLVMRepr())
 }
 
 func (e *emitter) emitExpression(expr parse.Node) Value {
@@ -191,46 +193,48 @@ func (e *emitter) emitExpression(expr parse.Node) Value {
 }
 
 func isConstantVal(v Value) bool {
-    _,ok := v.(*exprConstant)
-    return ok
+	_, ok := v.(*exprConstant)
+	return ok
 }
 
 func isIntType(t GType) bool {
-    _,ok := t.(*GInt)
-    return ok
+	_, ok := t.(*GInt)
+	return ok
 }
 
 func (e *emitter) emitBinop(b *parse.Binop) Value {
 
+	l := e.emitExpression(b.L)
+	r := e.emitExpression(b.R)
 
-    l := e.emitExpression(b.L)
-    r := e.emitExpression(b.R)
-    
-    if isConstantVal(l) && isConstantVal(r) {
-        return foldConstantBinop(b.Op,l.(*exprConstant),r.(*exprConstant))
-    }
-    
-    lstr := fmt.Sprintf("%s %s",gTypeToLLVM(l.getGType()),l.getLLVMRepr())
-    rstr := fmt.Sprintf("%s %s",gTypeToLLVM(r.getGType()),r.getLLVMRepr())
-    
-    if !l.getGType().Equals(r.getGType()) {
-        panic("arithmetic on incompatible types")
-    }
-    
-    if !isIntType(l.getGType()) {
-        panic("arithmetic on non int type")
-    }
-    
-    switch b.Op {
-        case '+':
-            e.emiti("new = add %s %s\n",lstr,rstr)
-        default:
-            panic("unreachable")
-    }
-    
-    panic("unreachable")
+	if isConstantVal(l) && isConstantVal(r) {
+		c, err := foldConstantBinop(b.Op, l.(*exprConstant), r.(*exprConstant))
+		if err != nil {
+			panic(err)
+		}
+		return c
+	}
+
+	lstr := fmt.Sprintf("%s %s", gTypeToLLVM(l.getGType()), l.getLLVMRepr())
+	rstr := fmt.Sprintf("%s %s", gTypeToLLVM(r.getGType()), r.getLLVMRepr())
+
+	if !l.getGType().Equals(r.getGType()) {
+		panic("arithmetic on incompatible types")
+	}
+
+	if !isIntType(l.getGType()) {
+		panic("arithmetic on non int type")
+	}
+
+	switch b.Op {
+	case '+':
+		e.emiti("new = add %s %s\n", lstr, rstr)
+	default:
+		panic("unreachable")
+	}
+
+	panic("unreachable")
 }
-
 
 func (e *emitter) funcDeclToGType(f *parse.FuncDecl) (*GFunc, error) {
 	ret := &GFunc{}
@@ -271,7 +275,7 @@ func gTypeToLLVM(t GType) string {
 	case *GInt:
 		switch t.Bits {
 		case 64:
-			return "i32"
+			return "i64"
 		case 32:
 			return "i32"
 		case 16:

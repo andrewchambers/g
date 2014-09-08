@@ -63,7 +63,7 @@ type Binop struct {
 
 type Constant struct {
 	SpanProvider
-	Val string
+	Val int64
 }
 
 type Ident struct {
@@ -187,11 +187,14 @@ func (n *If) Dump(depth uint) string {
 	return fmt.Sprintf("(if %s %s %s)", n.cond, n.body, n.els)
 }
 
-func (n *Binop) Dump(depth uint) string {
-	return "(BINOP)"
+func (n *Binop) Dump(d uint) string {
+	ret := ws(d) + fmt.Sprintf("Binop %s:\n", n.Op)
+	ret += n.L.Dump(d + 2)
+	ret += n.R.Dump(d + 2)
+	return ret
 }
 
-func (n *Unop) Dump(depth uint) string {
+func (n *Unop) Dump(d uint) string {
 	return "(UNOP)"
 }
 
@@ -235,7 +238,7 @@ func (n *Ident) Dump(d uint) string {
 }
 
 func (n *Constant) Dump(d uint) string {
-	return ws(d) + n.Val
+	return ws(d) + fmt.Sprintf("%v\n", n.Val)
 }
 
 func (n *String) Dump(d uint) string {

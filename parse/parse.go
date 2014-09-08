@@ -2,6 +2,7 @@ package parse
 
 import (
 	"fmt"
+	"strconv"
 )
 
 type parser struct {
@@ -302,10 +303,10 @@ func (p *parser) parsePrec1() Node {
 	for {
 		switch p.curTok.Kind {
 		case OR:
-			p.next()
-			r := p.parsePrec2()
 			n := &Binop{}
 			n.Op = p.curTok.Kind
+			p.next()
+			r := p.parsePrec2()
 			n.L = l
 			n.R = r
 			n.Span = l.GetSpan()
@@ -322,10 +323,10 @@ func (p *parser) parsePrec2() Node {
 	for {
 		switch p.curTok.Kind {
 		case AND:
-			p.next()
-			r := p.parsePrec3()
 			n := &Binop{}
 			n.Op = p.curTok.Kind
+			p.next()
+			r := p.parsePrec3()
 			n.L = l
 			n.R = r
 			n.Span = l.GetSpan()
@@ -342,10 +343,10 @@ func (p *parser) parsePrec3() Node {
 	for {
 		switch p.curTok.Kind {
 		case EQ, NEQ, '<', LTEQ, '>', GTEQ:
-			p.next()
-			r := p.parsePrec4()
 			n := &Binop{}
 			n.Op = p.curTok.Kind
+			p.next()
+			r := p.parsePrec4()
 			n.L = l
 			n.R = r
 			n.Span = l.GetSpan()
@@ -361,10 +362,10 @@ func (p *parser) parsePrec4() Node {
 	for {
 		switch p.curTok.Kind {
 		case '+', '-', '|', '^':
-			p.next()
-			r := p.parsePrec5()
 			n := &Binop{}
 			n.Op = p.curTok.Kind
+			p.next()
+			r := p.parsePrec5()
 			n.L = l
 			n.R = r
 			n.Span = l.GetSpan()
@@ -381,10 +382,10 @@ func (p *parser) parsePrec5() Node {
 	for {
 		switch p.curTok.Kind {
 		case '*', '/', '%', LSHIFT, RSHIFT, '&':
-			p.next()
-			r := p.parsePrimaryExpression()
 			n := &Binop{}
 			n.Op = p.curTok.Kind
+			p.next()
+			r := p.parsePrimaryExpression()
 			n.L = l
 			n.R = r
 			n.Span = l.GetSpan()
@@ -394,6 +395,10 @@ func (p *parser) parsePrec5() Node {
 			return l
 		}
 	}
+}
+
+func tokToInt64(t *Token) (int64, error) {
+	return strconv.ParseInt(t.Val, 10, 64)
 }
 
 func (p *parser) parsePrimaryExpression() Node {
@@ -407,7 +412,11 @@ func (p *parser) parsePrimaryExpression() Node {
 		ret = v
 	case CONSTANT:
 		v := &Constant{}
-		v.Val = p.curTok.Val
+		c, err := tokToInt64(p.curTok)
+		if err != nil {
+			p.syntaxError(err.Error(), p.curTok.Span)
+		}
+		v.Val = c
 		v.Span = p.curTok.Span
 		p.next()
 		ret = v
