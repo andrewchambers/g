@@ -7,22 +7,20 @@ import (
 	"github.com/andrewchambers/g/parse"
 )
 
-func EmitModule(out *bufio.Writer, file *parse.File) error {
-    e := newEmitter(out)
-    err := e.collectGlobalSymbols(file)
-    if err != nil {
-        return err
-    }
-    for _, fd := range file.FuncDecls {
-        e.emitFuncDecl(fd)
-    }
-    out.Flush()
-    return nil
-}
 
 type emitter struct {
     curscope *scope
     out *bufio.Writer
+    
+    curFuncType *GFunc
+}
+
+
+
+type exprValue struct {
+    llvmVal string
+    lval bool
+    gType GType
 }
 
 func newEmitter(out *bufio.Writer) *emitter {
@@ -47,6 +45,24 @@ func (e *emitter) emit(s string,args ...interface{}) {
 func (e *emitter) emiti(s string,args ...interface{}) {
     e.emit("    "+s,args...)
 }
+
+
+func EmitModule(out *bufio.Writer, file *parse.File) error {
+    e := newEmitter(out)
+    err := e.collectGlobalSymbols(file)
+    if err != nil {
+        return err
+    }
+    for _, fd := range file.FuncDecls {
+        err = e.emitFuncDecl(fd)
+        if err != nil {
+            return err
+        }
+    }
+    out.Flush()
+    return nil
+}
+
 
 func (e *emitter) collectGlobalSymbols(file *parse.File) error {
     for _, imp := range file.Imports {
@@ -75,13 +91,19 @@ func (e *emitter) collectGlobalSymbols(file *parse.File) error {
     return nil
 }
 
-func (e *emitter) emitFuncDecl(f *parse.FuncDecl) {
+func (e *emitter) emitFuncDecl(f *parse.FuncDecl) error {
 	//Emit function start
+	ft,err := e.funcDeclToGType(f)
+	if err != nil {
+	    return err
+	}
+	e.curFuncType = ft 
 	e.emit("define %s @%s() {\n","i32", f.Name)
 	for _,stmt := range f.Body {
 	    e.emitStatement(stmt)
 	}
 	e.emit("}\n")
+	return nil
 }
 
 func (e *emitter) emitStatement(stmt parse.Node) {
@@ -95,15 +117,8 @@ func (e *emitter) emitStatement(stmt parse.Node) {
 
 func (e *emitter) emitReturn(r *parse.Return) {
     v := e.emitExpression(r.Expr)
-    //XXX type check...
+    //XXX type check
     e.emiti("ret %s\n",v.llvmVal)
-}
-
-
-type exprValue struct {
-    llvmVal string
-    lval bool
-    gType GType
 }
 
 func (e *emitter) emitExpression(expr parse.Node) *exprValue {
@@ -118,5 +133,37 @@ func (e *emitter) emitExpression(expr parse.Node) *exprValue {
     }
 }
 
+func (e *emitter) funcDeclToGType(f *parse.FuncDecl) (*GFunc,error) {
+    ret := &GFunc{}
+    for _,t := range f.ArgTypes {
+        gty,err := e.parseNodeToGType(t)
+        if err == nil {
+            return nil,err
+        }
+        ret.ArgTypes = append(ret.ArgTypes,gty)
+    }
+    if f.RetType != nil {
+        t,err := e.parseNodeToGType(f.RetType)
+        if err != nil {
+            return nil,err
+        }
+        ret.RetType = t
+    }
+    
+    return ret,nil
+}
 
+func (e *emitter) parseNodeToGType(n parse.Node) (GType,error) {
+    span := n.GetSpan()
+    var err error
+    var ret GType
+    switch n := n.(type) {
+        case *parse.TypeAlias:
+            ret,err = e.curscope.lookupType(n.Name)
+    }
+    if err != nil {
+        return nil,fmt.Errorf("expected type (%s) at %s:%v.",err ,span.Path,span.Start)
+    }
+    return ret,nil
+}
 

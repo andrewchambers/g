@@ -14,28 +14,31 @@ const (
    PACKAGE
 )
 
-type Symbol struct {
-    DefPos parse.FilePos
-    GType GType
-    SType stype
+type symbol struct {
+    defPos parse.FilePos
+    gType GType
+    sType stype
 }
 
-func newSymbol(p parse.FilePos) *Symbol {
-    ret := &Symbol{}
-    ret.DefPos = p
-    return ret
-}
 
 type scope struct {
     parent *scope
-    symkv map[string]  *Symbol
+    symkv map[string]  *symbol
     typekv map[string] *GType
 }
+
+
+func newSymbol(p parse.FilePos) *symbol {
+    ret := &symbol{}
+    ret.defPos = p
+    return ret
+}
+
 
 func newScope(parent *scope) *scope {
     s := &scope{}
     s.parent = parent
-    s.symkv = make(map[string]*Symbol)
+    s.symkv = make(map[string]*symbol)
     s.typekv = make(map[string]*GType)
     return s
 }
@@ -50,10 +53,10 @@ func (s *scope) declareType(k string,t *GType) (error) {
 }
 
 
-func (s *scope) declareSym(k string,sym *Symbol) error {
+func (s *scope) declareSym(k string,sym *symbol) error {
     v,ok := s.symkv[k]
     if ok {
-        return fmt.Errorf("symbol %s already defined at %s",k,v.DefPos)
+        return fmt.Errorf("symbol %s already defined at %s",k,v.defPos)
     }
     s.symkv[k] = sym
     return nil
@@ -67,10 +70,10 @@ func (s *scope) lookupType(k string) (*GType,error) {
     if s.parent != nil {
         return s.parent.lookupType(k)
     }
-    return nil,fmt.Errorf("type %s is not a valid type alias", k)
+    return nil,fmt.Errorf("%s is not a valid type alias", k)
 }
 
-func (s *scope) lookupSym(k string) (*Symbol,error) {
+func (s *scope) lookupSym(k string) (*symbol,error) {
     v,ok := s.symkv[k]
     if ok {
         return v,nil
