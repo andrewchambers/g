@@ -1,6 +1,7 @@
 package emit
 
 type GType interface {
+    Equals(GType) bool
 }
 
 type GAlias struct {
@@ -18,11 +19,6 @@ type GInt struct {
 	Signed bool
 }
 
-func NewGInt(bits uint,signed bool) *GInt {
-    return &GInt{bits,signed}
-}
-
-
 type GPointer struct {
 	PointsTo GType
 }
@@ -36,3 +32,26 @@ type GArray struct {
 	Dim     int64
 	ArrayOf GType
 }
+
+func NewGInt(bits uint,signed bool) *GInt {
+    return &GInt{bits,signed}
+}
+
+
+func (i *GInt) Equals(other GType) bool {
+    oint,ok := other.(*GInt) 
+    if !ok {
+        return false
+    }
+    return i.Bits == oint.Bits && i.Signed == oint.Signed 
+}
+
+func (i *GFunc) Equals(other GType) bool {
+    _,ok := other.(*GFunc) 
+    if !ok {
+        return false
+    }
+    panic("unimplemented")
+}
+
+

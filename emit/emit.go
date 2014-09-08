@@ -27,8 +27,15 @@ func newEmitter(out *bufio.Writer) *emitter {
     ret := &emitter{}
     ret.curscope = newScope(nil)
     ret.out = out
+    ret.addBuiltinTypes()
     return ret
 }
+
+func (e *emitter)  addBuiltinTypes() {
+    e.curscope.declareType("int",&GInt{32,true})
+    e.curscope.declareType("uint",&GInt{32,false})
+}
+
 
 func (e *emitter) pushScope() {
     e.curscope = newScope(e.curscope)
@@ -98,7 +105,7 @@ func (e *emitter) emitFuncDecl(f *parse.FuncDecl) error {
 	    return err
 	}
 	e.curFuncType = ft 
-	e.emit("define %s @%s() {\n","i32", f.Name)
+	e.emit("define %s @%s() {\n",gTypeToLLVM(ft.RetType), f.Name)
 	for _,stmt := range f.Body {
 	    e.emitStatement(stmt)
 	}
@@ -117,15 +124,18 @@ func (e *emitter) emitStatement(stmt parse.Node) {
 
 func (e *emitter) emitReturn(r *parse.Return) {
     v := e.emitExpression(r.Expr)
-    //XXX type check
-    e.emiti("ret %s\n",v.llvmVal)
+    if !v.gType.Equals(e.curFuncType.RetType) {
+        panic("failed type check")
+    }
+    e.emiti("ret %s %s\n",gTypeToLLVM(v.gType),v.llvmVal)
 }
 
 func (e *emitter) emitExpression(expr parse.Node) *exprValue {
     switch expr := expr.(type) {
         case *parse.Constant:
+            //XXX
             v := &exprValue{}
-            v.llvmVal = fmt.Sprintf("i32 %s",expr.Val)
+            v.llvmVal = fmt.Sprintf("%s",expr.Val)
             v.gType = NewGInt(32,true)
             return v
         default:
@@ -165,5 +175,27 @@ func (e *emitter) parseNodeToGType(n parse.Node) (GType,error) {
         return nil,fmt.Errorf("expected type (%s) at %s:%v.",err ,span.Path,span.Start)
     }
     return ret,nil
+}
+
+func gTypeToLLVM(t GType) string {
+    switch t := t.(type) {
+        case *GInt:
+            switch t.Bits {
+                case 64:
+                    return "i32"
+                case 32:
+                    return "i32"
+                case 16:
+                    return "i16"
+                case 8:
+                    return "i8"
+                case 1:
+                    return "i1"
+                default:
+                    panic("unreachable.")
+            }
+        default:
+            panic("unreachable")
+    }
 }
 

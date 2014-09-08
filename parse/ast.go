@@ -4,6 +4,114 @@ import (
 	"fmt"
 )
 
+
+type File struct {
+	SpanProvider
+	Pkg string
+	//List of imports in the translation unit.
+	Imports      []*String
+	FuncDecls    []*FuncDecl
+	TypeDecls    []*TypeDecl
+	ConstDecls   []*ConstDecl
+	VarDecls     []*VarDecl
+}
+
+type StatementList interface {
+    addStatement(n Node)
+}
+
+type For struct {
+	span             FileSpan
+	init, cond, step Node
+	body             []Node
+}
+
+type If struct {
+	span FileSpan
+	cond Node
+	body []Node
+	els  []Node
+}
+
+type Selector struct {
+	SpanProvider
+	Name string
+	Expr Node
+}
+
+type Unop struct {
+	SpanProvider
+	Op   TokenKind
+	Expr Node
+}
+
+type Call struct {
+	SpanProvider
+	FuncLike Node
+	Args     []Node
+}
+
+type TypeAlias struct {
+	SpanProvider
+	Name string
+}
+
+type Binop struct {
+	SpanProvider
+	op   TokenKind
+	l, r Node
+}
+
+type Constant struct {
+	SpanProvider
+	Val  string
+}
+
+type Ident struct {
+	SpanProvider
+	Val string
+}
+
+type String struct {
+	SpanProvider
+	Val string
+}
+
+type VarDecl struct {
+	SpanProvider
+	Name string
+	Type Node
+	Init Node
+}
+
+type TypeDecl struct {
+	SpanProvider
+    Name string
+	Type Node
+}
+
+type ConstDecl struct {
+	SpanProvider
+    Name string
+	Body Node
+}
+
+type FuncDecl struct {
+	SpanProvider
+	Name    string
+	RetType Node
+	ArgNames    []string
+	ArgTypes    []Node
+	Body    []Node
+}
+
+type Return struct {
+	SpanProvider
+	Expr Node
+}
+
+
+
 type SpanProvider struct {
 	// The file span of the token.
 	Span FileSpan
@@ -23,24 +131,10 @@ func ws(depth uint) string {
     return ret
 }
 
-type StatementList interface {
-    addStatement(n Node)
-}
 
 type Node interface {
 	Dump(depth uint) string
 	GetSpan() FileSpan
-}
-
-type File struct {
-	SpanProvider
-	Pkg string
-	//List of imports in the translation unit.
-	Imports      []*String
-	FuncDecls    []*FuncDecl
-	TypeDecls    []*TypeDecl
-	ConstDecls   []*ConstDecl
-	VarDecls     []*VarDecl
 }
 
 func (n *File) addImport(s *String) {
@@ -88,22 +182,9 @@ func (n *File) Dump(d uint) string {
 	return ret
 }
 
-type For struct {
-	span             FileSpan
-	init, cond, step Node
-	body             []Node
-}
-
 func (n *For) GetSpan() FileSpan { return n.span }
 func (n *For) Dump(depth uint) string {
 	return fmt.Sprintf("(For %s %s %s %s)", n.init, n.cond, n.step, n.body)
-}
-
-type If struct {
-	span FileSpan
-	cond Node
-	body []Node
-	els  []Node
 }
 
 func (n *If) GetSpan() FileSpan { return n.span }
@@ -111,31 +192,17 @@ func (n *If) Dump(depth uint) string {
 	return fmt.Sprintf("(if %s %s %s)", n.cond, n.body, n.els)
 }
 
-type Binop struct {
-	SpanProvider
-	op   TokenKind
-	l, r Node
-}
 
 func (n *Binop) Dump(depth uint) string {
 	return "(BINOP)"
 }
 
-type Unop struct {
-	SpanProvider
-	Op   TokenKind
-	Expr Node
-}
+
 
 func (n *Unop) Dump(depth uint) string {
 	return "(UNOP)"
 }
 
-type Selector struct {
-	SpanProvider
-	Name string
-	Expr Node
-}
 
 func (n *Selector) Dump(d uint) string {
 	ret := ws(d) + "Selector:\n"
@@ -144,12 +211,6 @@ func (n *Selector) Dump(d uint) string {
 	return ret
 }
 
-
-type Call struct {
-	SpanProvider
-	FuncLike Node
-	Args     []Node
-}
 
 func (n *Call) Dump(d uint) string {
 	ret := ws(d) + "Call:\n"
@@ -162,10 +223,7 @@ func (n *Call) Dump(d uint) string {
 	return ret
 }
 
-type TypeAlias struct {
-	SpanProvider
-	Name string
-}
+
 
 func (n *TypeAlias) Dump(d uint) string {
 	ret := ws(d) + "TypeAlias:\n"
@@ -184,39 +242,22 @@ func (n *Struct) Dump(depth uint) string {
 	return "(STRUCT)"
 }
 
-type Ident struct {
-	SpanProvider
-	Val string
-}
+
 
 func (n *Ident) Dump(d uint) string {
 	return ws(d) + n.Val + "\n"
 }
 
-type Constant struct {
-	SpanProvider
-	Val  string
-}
 
 func (n *Constant) Dump(d uint) string {
 	return ws(d) + n.Val
 }
 
-type String struct {
-	SpanProvider
-	Val string
-}
 
 func (n *String) Dump(d uint) string {
 	return ws(d) + n.Val + "\n"
 }
 
-type VarDecl struct {
-	SpanProvider
-	Name string
-	Type Node
-	Init Node
-}
 
 func (n *VarDecl) Dump(d uint) string {
 	ret := ws(d) + "VarDecl:\n"
@@ -231,12 +272,6 @@ func (n *VarDecl) Dump(d uint) string {
 	return ret
 }
 
-type TypeDecl struct {
-	SpanProvider
-    Name string
-	Type Node
-}
-
 func (n *TypeDecl) Dump(d uint) string {
 	ret := ws(d) + "TypeDecl:\n"
 	ret += ws(d + 2) + "Name: " + n.Name + "\n"
@@ -244,19 +279,8 @@ func (n *TypeDecl) Dump(d uint) string {
 	return ret
 }
 
-type ConstDecl struct {
-	SpanProvider
-    Name string
-	Body Node
-}
-
 func (n *ConstDecl) Dump(depth uint) string {
 	return "(Constdecl)"
-}
-
-type Return struct {
-	SpanProvider
-	Expr Node
 }
 
 func (n *Return) Dump(d uint) string {
@@ -267,14 +291,6 @@ func (n *Return) Dump(d uint) string {
 	return ret
 }
 
-type FuncDecl struct {
-	SpanProvider
-	Name    string
-	RetType Node
-	ArgNames    []string
-	ArgTypes    []Node
-	Body    []Node
-}
 
 func (n *FuncDecl) addArgument(name string, t Node) {
     n.ArgNames = append(n.ArgNames,name)

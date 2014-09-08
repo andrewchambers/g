@@ -24,7 +24,7 @@ type symbol struct {
 type scope struct {
     parent *scope
     symkv map[string]  *symbol
-    typekv map[string] *GType
+    typekv map[string] GType
 }
 
 
@@ -39,11 +39,11 @@ func newScope(parent *scope) *scope {
     s := &scope{}
     s.parent = parent
     s.symkv = make(map[string]*symbol)
-    s.typekv = make(map[string]*GType)
+    s.typekv = make(map[string]GType)
     return s
 }
 
-func (s *scope) declareType(k string,t *GType) (error) {
+func (s *scope) declareType(k string,t GType) (error) {
     _,ok := s.typekv[k]
     if ok {
         return fmt.Errorf("type %s already defined",k)
@@ -62,7 +62,7 @@ func (s *scope) declareSym(k string,sym *symbol) error {
     return nil
 }
 
-func (s *scope) lookupType(k string) (*GType,error) {
+func (s *scope) lookupType(k string) (GType,error) {
     v,ok := s.typekv[k]
     if ok {
         return v,nil
