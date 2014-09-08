@@ -96,6 +96,10 @@ type FilePos struct {
 	Col int
 }
 
+func (p FilePos) String() string {
+    return fmt.Sprintf("%d:%d",p.Line,p.Col)
+}
+
 // A span across two points.
 type FileSpan struct {
 	//Path

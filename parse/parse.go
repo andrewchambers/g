@@ -110,7 +110,8 @@ func (p *parser) parseTopLevelDeclarations() {
 			f := p.parseFuncDecl()
 			p.ast.addFuncDecl(f)
 		case VAR:
-			p.parseVarDecl()
+			v := p.parseVarDecl()
+			p.ast.addVarDecl(v)
 		case CONST:
 			p.parseConst()
 		default:
@@ -119,14 +120,18 @@ func (p *parser) parseTopLevelDeclarations() {
 	}
 }
 
-func (p *parser) parseVarDecl() {
+func (p *parser) parseVarDecl() *VarDecl {
+	ret := &VarDecl{}
+	ret.Span = p.curTok.Span
 	p.expect(VAR)
+	ret.Name = p.curTok.Val
 	p.expect(IDENTIFIER)
-	p.parseType(false)
+	ret.Type = p.parseType(false)
 	if p.curTok.Kind == '=' {
 		p.next()
-		p.parseExpression()
+		ret.Init = p.parseExpression()
 	}
+	return ret
 }
 
 func (p *parser) parseTypeDecl() *TypeDecl {

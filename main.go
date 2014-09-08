@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/andrewchambers/g/parse"
 	"github.com/andrewchambers/g/emit"
-	"github.com/andrewchambers/g/llvm"
 	"io"
 	"bufio"
 	"os"
@@ -122,6 +121,10 @@ func parseFile(sourceFile string) *parse.File {
 
 func compileFile(sourceFile string, out io.WriteCloser) {
 	ast := parseFile(sourceFile)
-	mod := emit.EmitModule(ast)
-	llvm.EmitLLVM(out,mod)
+	err := emit.EmitModule(bufio.NewWriter(out),ast)
+	if err != nil {
+	    fmt.Fprintf(os.Stderr, "%s\n", err)
+	    os.Exit(1)
+	}
+	out.Close()
 }

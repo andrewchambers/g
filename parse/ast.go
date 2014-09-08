@@ -78,6 +78,9 @@ func (n *File) Dump(d uint) string {
 	} 
 	ret += ws(d + 2) + "ConstDecls:\n"
 	ret += ws(d + 2) + "VarDecls:\n"
+	for _,v := range n.VarDecls {
+	    ret += v.Dump(d + 4)
+	}
 	ret += ws(d + 2) + "FuncDecls:\n"
 	for _,f := range n.FuncDecls {
 	    ret += f.Dump(d + 4)
@@ -210,12 +213,22 @@ func (n *String) Dump(d uint) string {
 
 type VarDecl struct {
 	SpanProvider
-	val  string
-	init Node
+	Name string
+	Type Node
+	Init Node
 }
 
-func (n *VarDecl) Dump(depth uint) string {
-	return "(VARDECL)"
+func (n *VarDecl) Dump(d uint) string {
+	ret := ws(d) + "VarDecl:\n"
+	ret += ws(d + 2) + "Name:\n"
+	ret += ws(d + 4) + n.Name + "\n"
+	ret += ws(d + 2) + "Type:\n"
+	ret += n.Type.Dump(d + 4)
+	if n.Init != nil {
+	    ret += ws(d + 2) + "Init:\n"
+	    ret += n.Init.Dump(d + 4)
+	}
+	return ret
 }
 
 type TypeDecl struct {
@@ -275,7 +288,8 @@ func (n *FuncDecl) addStatement(s Node) {
 func (n *FuncDecl) Dump(d uint) string {
 	ret := ""
 	ret = ws(d) + "FuncDecl:\n"
-	ret += ws(d + 2) + "Name: " + n.Name + "\n"
+	ret += ws(d + 2) + "Name:\n"
+	ret += ws(d + 4) + n.Name + "\n"
 	ret += ws(d + 2) + "RetType:\n"
 	ret += n.RetType.Dump(d + 4)
 	ret += ws(d + 2) + "Arguments:\n"
