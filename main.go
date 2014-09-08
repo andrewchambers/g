@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
-	"github.com/andrewchambers/g/parse"
 	"github.com/andrewchambers/g/emit"
+	"github.com/andrewchambers/g/parse"
 	"io"
-	"bufio"
 	"os"
 	"runtime/pprof"
 )
@@ -79,7 +79,7 @@ func main() {
 		tokenizeFile(input, output)
 	} else if *parseOnly {
 		ast := parseFile(input)
-		fmt.Fprintln(output,ast.Dump(0))
+		fmt.Fprintln(output, ast.Dump(0))
 	} else {
 		compileFile(input, output)
 	}
@@ -111,20 +111,20 @@ func parseFile(sourceFile string) *parse.File {
 		os.Exit(1)
 	}
 	tokChan := parse.Lex(sourceFile, f)
-	ast,err := parse.Parse(tokChan)
+	ast, err := parse.Parse(tokChan)
 	if err != nil {
-	    fmt.Fprintf(os.Stderr, "parse error: %s\n", err)
-	    os.Exit(1)
+		fmt.Fprintf(os.Stderr, "parse error: %s\n", err)
+		os.Exit(1)
 	}
 	return ast
 }
 
 func compileFile(sourceFile string, out io.WriteCloser) {
 	ast := parseFile(sourceFile)
-	err := emit.EmitModule(bufio.NewWriter(out),ast)
+	err := emit.EmitModule(bufio.NewWriter(out), ast)
 	if err != nil {
-	    fmt.Fprintf(os.Stderr, "%s\n", err)
-	    os.Exit(1)
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		os.Exit(1)
 	}
 	out.Close()
 }

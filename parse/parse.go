@@ -10,10 +10,9 @@ type parser struct {
 	c       chan *Token
 	ast     *File
 	err     error
-	
 }
 
-func Parse(c chan *Token) (*File,error) {
+func Parse(c chan *Token) (*File, error) {
 	//Read channel until empty incase of errors
 	defer func() {
 		for {
@@ -27,12 +26,12 @@ func Parse(c chan *Token) (*File,error) {
 	p.next()
 	p.next()
 	p.parseFile()
-	return p.ast,p.err
+	return p.ast, p.err
 }
 
 // Panics with aborting error type, does not return
 func (p *parser) syntaxError(message string, span FileSpan) {
-    p.err = fmt.Errorf("%s at %s:%d:%d",message,span.Path,span.Start.Line,span.Start.Col)
+	p.err = fmt.Errorf("%s at %s:%d:%d", message, span.Path, span.Start.Line, span.Start.Col)
 	panic(&breakout{})
 }
 
@@ -93,11 +92,11 @@ func (p *parser) parseImportList() {
 }
 
 func (p *parser) parseString() *String {
-    ret := &String{}
-    ret.Span = p.curTok.Span
-    ret.Val = p.curTok.Val
-    p.expect(STRING)
-    return ret
+	ret := &String{}
+	ret.Span = p.curTok.Span
+	ret.Val = p.curTok.Val
+	p.expect(STRING)
+	return ret
 }
 
 func (p *parser) parseTopLevelDeclarations() {
@@ -183,7 +182,7 @@ func (p *parser) parseArgList(f *FuncDecl) {
 		name := p.curTok.Val
 		p.next()
 		t := p.parseType(false)
-		f.addArgument(name,t)
+		f.addArgument(name, t)
 		if p.curTok.Kind == ',' {
 			p.next()
 		}
@@ -204,8 +203,8 @@ func (p *parser) parseStatementList(sl StatementList) {
 func (p *parser) parseStatement() Node {
 	switch p.curTok.Kind {
 	case RETURN:
-	    r := &Return{}
-	    r.Span = p.curTok.Span
+		r := &Return{}
+		r.Span = p.curTok.Span
 		p.next()
 		r.Expr = p.parseExpression()
 		r.Span.End = p.curTok.Span.End
@@ -242,7 +241,6 @@ func (p *parser) parseStruct() Node {
 	p.expect('}')
 	return ret
 }
-
 
 func (p *parser) parseSimpleStatement() Node {
 	ret := p.parseExpression()
@@ -418,19 +416,18 @@ func (p *parser) parsePrimaryExpression() Node {
 	default:
 		p.syntaxError("error parsing expression", p.curTok.Span)
 	}
-    
-    loop:
-    for {
-        switch p.curTok.Kind {
-        case '(':
-            ret = p.parseCall(ret)
-        case '.':
-            ret = p.parseSelector(ret)
-        default:
-            break loop
-        }
-    }
-    
+
+loop:
+	for {
+		switch p.curTok.Kind {
+		case '(':
+			ret = p.parseCall(ret)
+		case '.':
+			ret = p.parseSelector(ret)
+		default:
+			break loop
+		}
+	}
 
 	return ret
 }

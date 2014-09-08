@@ -42,33 +42,33 @@ func (k TokenKind) String() string {
 	}
 
 	var lut = map[TokenKind]string{
-	    FOR:       "for",
-	    PACKAGE:   "package",
-	    IMPORT:    "import",
-	    FUNC:      "func",
-	    RETURN:    "return",
-	    STRUCT:    "struct",
-	    CONSTANT:  "constant",
-	    STRING:    "string",
-	    IDENTIFIER:"identifier",
-	    VAR:       "var",
-	    CONST:     "const",
-	    TYPE:      "type",
-	    IF:        "if",
-	    ELSE:      "else",
-	    NEQ:       "!=",
-	    EQ:        "==",
-	    LTEQ:      "<=",
-	    GTEQ:      ">=",
-	    INC:       "++",
-	    DEC:       "--",
-	    ADDASSIGN: "+=",
-	    SUBASSIGN: "-=",
-	    MULASSIGN: "*=",
-	    AND:       "&",
-	    OR:        "|",
-	    LSHIFT:    "<<",
-	    RSHIFT:    ">>",
+		FOR:        "for",
+		PACKAGE:    "package",
+		IMPORT:     "import",
+		FUNC:       "func",
+		RETURN:     "return",
+		STRUCT:     "struct",
+		CONSTANT:   "constant",
+		STRING:     "string",
+		IDENTIFIER: "identifier",
+		VAR:        "var",
+		CONST:      "const",
+		TYPE:       "type",
+		IF:         "if",
+		ELSE:       "else",
+		NEQ:        "!=",
+		EQ:         "==",
+		LTEQ:       "<=",
+		GTEQ:       ">=",
+		INC:        "++",
+		DEC:        "--",
+		ADDASSIGN:  "+=",
+		SUBASSIGN:  "-=",
+		MULASSIGN:  "*=",
+		AND:        "&",
+		OR:         "|",
+		LSHIFT:     "<<",
+		RSHIFT:     ">>",
 	}
 	s, ok := lut[k]
 	if ok {
@@ -97,7 +97,7 @@ type FilePos struct {
 }
 
 func (p FilePos) String() string {
-    return fmt.Sprintf("%d:%d",p.Line,p.Col)
+	return fmt.Sprintf("%d:%d", p.Line, p.Col)
 }
 
 // A span across two points.
