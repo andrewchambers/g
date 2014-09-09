@@ -212,8 +212,9 @@ func (p *parser) parseStatement() Node {
 		p.expect(';')
 		return r
 	case VAR:
-		p.parseVarDecl()
+		ret := p.parseVarDecl()
 		p.expect(';')
+		return ret
 	case IDENTIFIER, CONSTANT, STRING:
 		ret := p.parseSimpleStatement()
 		p.expect(';')

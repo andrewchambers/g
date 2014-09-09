@@ -11,7 +11,8 @@ type emitter struct {
 	gscope   *scope
 	curscope *scope
 	out      *bufio.Writer
-
+    
+    llvmNameCounter uint
 	curFuncType *GFunc
 }
 
@@ -84,6 +85,12 @@ func newEmitter(out *bufio.Writer) *emitter {
 	return ret
 }
 
+
+func (e *emitter) newLLVMName() string {
+    e.llvmNameCounter++
+	return fmt.Sprintf("%%%d",e.llvmNameCounter)
+}
+
 func (e *emitter) addBuiltinTypes() {
 	e.curscope.declareType("bool",NewGInt(1, false))
 	e.curscope.declareType("int", NewGInt(e.getIntWidth(), true))
@@ -133,21 +140,21 @@ func (e *emitter) collectGlobalSymbols(file *parse.File) error {
 	for _, imp := range file.Imports {
 		impdef := imp.Val[1 : len(imp.Val)-1]
 		impdef = strings.Split(impdef, "/")[0]
-		sym := newSymbol(imp.Span.Start)
+		sym := newGlobalSymbol(imp.Span.Start)
 		err := e.curscope.declareSym(impdef, sym)
 		if err != nil {
 			return fmt.Errorf("bad import: %s %s:%v", err, imp.Span.Path, imp.Span.Start)
 		}
 	}
 	for _, fd := range file.FuncDecls {
-		sym := newSymbol(fd.Span.Start)
+		sym := newGlobalSymbol(fd.Span.Start)
 		err := e.curscope.declareSym(fd.Name, sym)
 		if err != nil {
 			return fmt.Errorf("bad func decl: %s %s:%v", err, fd.Span.Path, fd.Span.Start)
 		}
 	}
 	for _, vd := range file.VarDecls {
-		sym := newSymbol(vd.Span.Start)
+		sym := newGlobalSymbol(vd.Span.Start)
 		err := e.curscope.declareSym(vd.Name, sym)
 		if err != nil {
 			return fmt.Errorf("bad var decl: %s %s:%v", err, vd.Span.Path, vd.Span.Start)
@@ -173,6 +180,8 @@ func (e *emitter) emitFuncDecl(f *parse.FuncDecl) error {
 
 func (e *emitter) emitStatement(stmt parse.Node) {
 	switch stmt := stmt.(type) {
+	case *parse.VarDecl:
+	    e.emitLocalVarDecl(stmt)
 	case *parse.Return:
 		e.emitReturn(stmt)
 	default:
@@ -180,8 +189,31 @@ func (e *emitter) emitStatement(stmt parse.Node) {
 	}
 }
 
+func (e *emitter) emitLocalVarDecl(vd *parse.VarDecl) {
+    t,err := e.parseNodeToGType(vd.Type)
+    if err != nil {
+        panic("unhandled err")
+    }
+    name := e.newLLVMName()
+    e.emiti("%s = alloca %s\n",name,gTypeToLLVM(t))
+    e.emitZeroMem(name,t)
+    s := &localSymbol{
+         alloca: name,
+         gType:  t,
+         defPos: vd.Span.Start,
+    }
+    e.curscope.declareSym(vd.Name,s)
+} 
+
 func (e *emitter) emitReturn(r *parse.Return) {
+	var err error
 	v := e.emitExpression(r.Expr)
+	if v.isLVal() {
+	    v,err = e.emitRemoveLValness(v)
+	    if err != nil {
+	        panic("error emitting return " + err.Error())
+	    }
+	}
 	var llvmType string
 	_, ok := v.getGType().(*GConstant)
 	if ok {
@@ -201,6 +233,48 @@ func (e *emitter) emitReturn(r *parse.Return) {
 	e.emiti("ret %s %s\n", llvmType, v.getLLVMRepr())
 }
 
+func (e *emitter) emitZeroMem(name string,t GType) error {
+    switch t := t.(type) {
+        case *GInt:
+            switch t.Bits {
+                case 64:
+                    e.emiti("store i64 0, i64* %s\n",name)
+                case 32:
+                    e.emiti("store i32 0, i32* %s\n",name)
+                case 16:
+                    e.emiti("store i16 0, i16* %s\n",name)
+                case 8:
+                    e.emiti("store i8 0, i8* %s\n",name)
+                case 1:
+                    e.emiti("store i1 0, i1* %s\n",name)
+                default:
+                    panic("internal error")
+            }
+            return nil
+        default:
+            return fmt.Errorf("unable to zero memory for type %s",t)
+    }
+}
+
+func (e *emitter) emitRemoveLValness(v Value) (Value,error) {
+    if !v.isLVal() {
+        panic("internal error")
+    }
+    switch v := v.(type) {
+        case *exprValue:
+            name := e.newLLVMName()
+            e.emiti("%s = load %s* %s\n",name,gTypeToLLVM(v.getGType()),v.getLLVMRepr())
+            ret := &exprValue{
+                llvmName: name,
+	            lval:     false,
+	            gType:    v.getGType(),
+            }
+            return ret,nil
+        default:
+            panic("internal error")
+    }
+}
+
 func (e *emitter) emitExpression(expr parse.Node) Value {
 	switch expr := expr.(type) {
 	case *parse.Constant:
@@ -208,9 +282,28 @@ func (e *emitter) emitExpression(expr parse.Node) Value {
 		return v
 	case *parse.Binop:
 		return e.emitBinop(expr)
+	case *parse.Ident:
+	    return e.emitIdent(expr)
 	default:
 		panic("unhandled...")
 	}
+}
+
+func (e *emitter) emitIdent(i *parse.Ident) Value {
+    s,err := e.curscope.lookupSym(i.Val)
+    if err != nil {
+        panic(err)
+    }
+    switch s := s.(type) {
+        case *localSymbol:
+            return &exprValue{
+                llvmName: s.alloca,
+                lval: true,
+                gType: s.getGType(),
+            }
+        default:
+            panic("unhandled...")
+    }
 }
 
 func isConstantVal(v Value) bool {
@@ -285,17 +378,16 @@ func (e *emitter) funcDeclToGType(f *parse.FuncDecl) (*GFunc, error) {
 }
 
 func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
-	span := n.GetSpan()
-	var err error
-	var ret GType
+	//span := n.GetSpan()
 	switch n := n.(type) {
 	case *parse.TypeAlias:
-		ret, err = e.curscope.lookupType(n.Name)
+		ret, err := e.curscope.lookupType(n.Name)
+		return ret,err
+	default:
+	    return nil,fmt.Errorf("invalid type")
 	}
-	if err != nil {
-		return nil, fmt.Errorf("expected type (%s) at %s:%v.", err, span.Path, span.Start)
-	}
-	return ret, nil
+	 
+    panic("unreachable")
 }
 
 func gTypeToLLVM(t GType) string {
