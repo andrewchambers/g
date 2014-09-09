@@ -156,6 +156,42 @@ func (l *lexer) lex() {
 					l.unreadRune()
 					l.sendTok('=', "=")
 				}
+			case '&':
+				next, _ := l.readRune()
+				switch next {
+				case '&':
+					l.sendTok(AND, "&&")
+				case '=':
+					l.sendTok(ANDASSIGN, "&=")
+				case '^':
+					l.sendTok(ANDNOT, "&^")
+				default:
+					l.unreadRune()
+					l.sendTok('&', "&")
+				}
+			case '/':
+				next, _ := l.readRune()
+				switch next {
+				default:
+					l.unreadRune()
+					l.sendTok('/', "/")
+				}
+			case '^':
+				next, _ := l.readRune()
+				switch next {
+				case '=':
+				    l.sendTok(XORASSIGN, "^=")
+				default:
+					l.unreadRune()
+					l.sendTok('^', "^")
+				}
+			case '%':
+				next, _ := l.readRune()
+				switch next {
+				default:
+					l.unreadRune()
+					l.sendTok('%', "%")
+				}
 			case '+':
 				next, _ := l.readRune()
 				switch next {
@@ -187,7 +223,6 @@ func (l *lexer) lex() {
 					l.unreadRune()
 					l.sendTok('*', "*")
 				}
-
 			case '<':
 				next, _ := l.readRune()
 				switch next {
@@ -211,7 +246,7 @@ func (l *lexer) lex() {
 					l.sendTok('>', ">")
 				}
 			default:
-				l.lexError("unknown character " + string(first))
+				l.lexError(fmt.Sprintf("unknown character %d", first))
 			}
 		}
 	}

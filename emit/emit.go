@@ -27,8 +27,12 @@ type exprValue struct {
 	gType    GType
 }
 
-type exprConstant struct {
+type intConstant struct {
 	val int64
+}
+
+type boolConstant struct {
+	val bool
 }
 
 func (v *exprValue) getLLVMRepr() string {
@@ -43,17 +47,33 @@ func (v *exprValue) getGType() GType {
 	return v.gType
 }
 
-func (c *exprConstant) getLLVMRepr() string {
+func (c *intConstant) getLLVMRepr() string {
 	return fmt.Sprintf("%v", c.val)
 }
 
-func (c *exprConstant) isLVal() bool {
+func (c *intConstant) isLVal() bool {
 	return false
 }
 
-func (c *exprConstant) getGType() GType {
+func (c *intConstant) getGType() GType {
 	return &GConstant{}
 }
+
+func (c *boolConstant) getLLVMRepr() string {
+	if c.val {
+	    return "1"
+	}
+	return "0"
+}
+
+func (c *boolConstant) isLVal() bool {
+	return false
+}
+
+func (c *boolConstant) getGType() GType {
+	return NewGInt(1,false)
+}
+
 
 func newEmitter(out *bufio.Writer) *emitter {
 	ret := &emitter{}
@@ -65,8 +85,9 @@ func newEmitter(out *bufio.Writer) *emitter {
 }
 
 func (e *emitter) addBuiltinTypes() {
-	e.curscope.declareType("int", &GInt{e.getIntWidth(), true})
-	e.curscope.declareType("uint", &GInt{e.getIntWidth(), false})
+	e.curscope.declareType("bool",NewGInt(1, false))
+	e.curscope.declareType("int", NewGInt(e.getIntWidth(), true))
+	e.curscope.declareType("uint",NewGInt(e.getIntWidth(), false))
 }
 
 //XXX shift to arch type
@@ -183,7 +204,7 @@ func (e *emitter) emitReturn(r *parse.Return) {
 func (e *emitter) emitExpression(expr parse.Node) Value {
 	switch expr := expr.(type) {
 	case *parse.Constant:
-		v := &exprConstant{expr.Val}
+		v := &intConstant{expr.Val}
 		return v
 	case *parse.Binop:
 		return e.emitBinop(expr)
@@ -193,8 +214,15 @@ func (e *emitter) emitExpression(expr parse.Node) Value {
 }
 
 func isConstantVal(v Value) bool {
-	_, ok := v.(*exprConstant)
-	return ok
+	_, ok := v.(*intConstant)
+	if ok {
+	    return true
+	}
+	_, ok = v.(*boolConstant)
+	if ok {
+	    return true
+	}
+	return false
 }
 
 func isIntType(t GType) bool {
@@ -208,7 +236,7 @@ func (e *emitter) emitBinop(b *parse.Binop) Value {
 	r := e.emitExpression(b.R)
 
 	if isConstantVal(l) && isConstantVal(r) {
-		c, err := foldConstantBinop(b.Op, l.(*exprConstant), r.(*exprConstant))
+		c, err := foldConstantBinop(b.Op, l, r)
 		if err != nil {
 			panic(err)
 		}

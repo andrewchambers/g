@@ -28,9 +28,12 @@ const (
 	INC
 	DEC
 	ADDASSIGN
+	ANDASSIGN
 	SUBASSIGN
+	XORASSIGN
 	MULASSIGN
 	AND
+	ANDNOT
 	OR
 	LSHIFT
 	RSHIFT
@@ -65,7 +68,9 @@ func (k TokenKind) String() string {
 		ADDASSIGN:  "+=",
 		SUBASSIGN:  "-=",
 		MULASSIGN:  "*=",
+		XORASSIGN:  "^=",
 		AND:        "&",
+		ANDNOT:     "&^",
 		OR:         "|",
 		LSHIFT:     "<<",
 		RSHIFT:     ">>",

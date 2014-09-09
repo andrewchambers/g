@@ -381,7 +381,7 @@ func (p *parser) parsePrec5() Node {
 	l := p.parsePrimaryExpression()
 	for {
 		switch p.curTok.Kind {
-		case '*', '/', '%', LSHIFT, RSHIFT, '&':
+		case '*', '/', '%', LSHIFT, RSHIFT, '&', ANDNOT:
 			n := &Binop{}
 			n.Op = p.curTok.Kind
 			p.next()
@@ -422,6 +422,10 @@ func (p *parser) parsePrimaryExpression() Node {
 		ret = v
 	case STRING:
 		ret = p.parseString()
+	case '(':
+	    p.expect('(')
+		ret = p.parseExpression()
+		p.expect(')')
 	default:
 		p.syntaxError("error parsing expression", p.curTok.Span)
 	}
