@@ -248,8 +248,15 @@ func (p *parser) parseSimpleStatement() Node {
 	ret := p.parseExpression()
 	switch p.curTok.Kind {
 	case '=', ADDASSIGN, MULASSIGN:
+	    ass := &Assign{}
+	    ass.Op = p.curTok.Kind
+	    ass.L = ret	    
 		p.next()
-		p.parseExpression()
+	 	r := p.parseExpression()
+	 	ass.R = r
+	 	ass.Span = ass.L.GetSpan()
+	 	ass.Span.End = ass.R.GetSpan().End
+	 	ret = ass
 	case INC, DEC:
 		p.next()
 	default:

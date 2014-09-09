@@ -186,6 +186,8 @@ func (e *emitter) emitStatement(stmt parse.Node) {
 	switch stmt := stmt.(type) {
 	case *parse.VarDecl:
 	    e.emitLocalVarDecl(stmt)
+	case *parse.Assign:
+		e.emitAssign(stmt)
 	case *parse.Return:
 		e.emitReturn(stmt)
 	default:
@@ -208,6 +210,51 @@ func (e *emitter) emitLocalVarDecl(vd *parse.VarDecl) {
     }
     e.curscope.declareSym(vd.Name,s)
 } 
+
+
+func (e *emitter) emitAssign(ass *parse.Assign) {
+    var err error
+	l := e.emitExpression(ass.L)
+	r := e.emitExpression(ass.R)
+	
+	if !l.isLVal() {
+        panic("assigning to a non lvalue")
+	}
+
+	if isConstantVal(r) {
+	    r,err = e.emitRemoveConstant(r,l.getGType())
+	    if err != nil {
+	        panic(err.Error())
+	    }
+	}
+	
+	if r.isLVal() {
+	    r,err = e.emitRemoveLValness(r)
+	    if err != nil {
+	        panic(err.Error())
+	    }
+	}
+
+	if !l.getGType().Equals(r.getGType()) {
+		panic("assignment of incompatible types")
+	}
+    lstr := fmt.Sprintf("%s %s", gTypeToLLVM(l.getGType()), l.getLLVMRepr())
+    err = e.emitStore(lstr,r)
+    if err != nil {
+        panic("unhandled error in emit store")
+    }
+}
+
+func (e *emitter) emitStore(llvmptr string,v Value) error {
+    t := v.getGType()
+    switch t.(type) {
+        case *GInt:
+            e.emiti("store %s, %s %s\n",llvmptr,gTypeToLLVM(t),v.getLLVMRepr())
+            return nil
+        default:
+            return fmt.Errorf("dont know how to store type")
+    }
+}
 
 func (e *emitter) emitReturn(r *parse.Return) {
 	var err error
@@ -277,7 +324,7 @@ func (e *emitter) emitRemoveLValness(v Value) (Value,error) {
     }
 }
 
-func (e *emitter) emitRemoveConstant(v Value,hint GType) (Value,error) {
+func (e *emitter) emitRemoveConstant(v Value, hint GType) (Value,error) {
     if !isConstantVal(v) {
         panic("internal error")
     }
@@ -285,6 +332,9 @@ func (e *emitter) emitRemoveConstant(v Value,hint GType) (Value,error) {
         case *intConstant:
             switch hint := hint.(type) {
                 case *GInt:
+                    if isBool(hint) {
+                        return nil,fmt.Errorf("cannot convert numeric constant to bool")
+                    }
                     ret := &exprValue{
                         llvmName: fmt.Sprintf("%d",v.val),
 	                    lval:     false,
@@ -405,9 +455,16 @@ func (e *emitter) emitBinop(b *parse.Binop) Value {
         lval: false,
     }
     
+    if isBool(l.getGType()) {
+        switch b.Op {
+            default:
+                panic(fmt.Sprintf("binop %s cannot be performed on type bool",b.Op))
+        }
+    }
+    
 	switch b.Op {
 	case '+':
-		e.emiti("%s = add %s %s\n",ret.llvmName, lstr, rstr)
+		e.emiti("%s = add %s, %s\n",ret.llvmName, lstr, rstr)
 		return ret
 	default:
 		panic("unreachable")

@@ -61,6 +61,12 @@ type Binop struct {
 	L, R Node
 }
 
+type Assign struct {
+	SpanProvider
+	Op   TokenKind
+	L, R Node
+}
+
 type Constant struct {
 	SpanProvider
 	Val int64
@@ -189,6 +195,13 @@ func (n *If) Dump(depth uint) string {
 
 func (n *Binop) Dump(d uint) string {
 	ret := ws(d) + fmt.Sprintf("Binop %s:\n", n.Op)
+	ret += n.L.Dump(d + 2)
+	ret += n.R.Dump(d + 2)
+	return ret
+}
+
+func (n *Assign) Dump(d uint) string {
+	ret := ws(d) + fmt.Sprintf("Assign %s:\n", n.Op)
 	ret += n.L.Dump(d + 2)
 	ret += n.R.Dump(d + 2)
 	return ret

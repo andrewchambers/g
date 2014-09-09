@@ -40,6 +40,14 @@ func NewGInt(bits uint, signed bool) *GInt {
 	return &GInt{bits, signed}
 }
 
+func isBool(t GType) bool {
+	v,ok := t.(*GInt)
+	if ok {
+	    return v.Bits == 1
+	}
+	return false
+}
+
 func (*GConstant) Equals(other GType) bool {
 	_, ok := other.(*GConstant)
 	return ok
