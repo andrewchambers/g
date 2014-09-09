@@ -464,11 +464,22 @@ func (e *emitter) emitBinop(b *parse.Binop) Value {
     
 	switch b.Op {
 	case '+':
-		e.emiti("%s = add %s, %s\n",ret.llvmName, lstr, rstr)
-		return ret
+	    e.emiti("%s = add %s, %s\n",ret.llvmName, lstr, rstr)
+	case '-':
+	    e.emiti("%s = sub %s, %s\n",ret.llvmName, lstr, rstr)
+	case '*':
+	    e.emiti("%s = mul %s, %s\n",ret.llvmName, lstr, rstr)
+	case '/':
+	    e.emiti("%s = sdiv %s, %s\n",ret.llvmName, lstr, rstr)
+	case '%':
+	    e.emiti("%s = srem %s, %s\n",ret.llvmName, lstr, rstr)
+	case '^':
+	    e.emiti("%s = xor %s, %s\n",ret.llvmName, lstr, rstr)
 	default:
 		panic("unreachable")
 	}
+	
+	return ret
 
 	panic("unreachable")
 }
