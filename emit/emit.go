@@ -72,7 +72,7 @@ func (c *boolConstant) isLVal() bool {
 }
 
 func (c *boolConstant) getGType() GType {
-	return NewGInt(1, false)
+	return NewGInt("", 1, false)
 }
 
 func newEmitter(out *bufio.Writer) *emitter {
@@ -90,13 +90,13 @@ func (e *emitter) newLLVMName() string {
 }
 
 func (e *emitter) addBuiltinTypes() {
-	e.curscope.declareType("bool", NewGInt(1, false))
-	e.curscope.declareType("int", NewGInt(e.getIntWidth(), true))
-	e.curscope.declareType("uint", NewGInt(e.getIntWidth(), false))
-	e.curscope.declareType("int32", NewGInt(32, true))
-	e.curscope.declareType("uint32", NewGInt(32, false))
-	e.curscope.declareType("int64", NewGInt(64, true))
-	e.curscope.declareType("uint64", NewGInt(64, false))
+	e.curscope.declareType("bool", NewGInt("bool", 1, false))
+	e.curscope.declareType("int", NewGInt("int", e.getIntWidth(), true))
+	e.curscope.declareType("uint", NewGInt("uint", e.getIntWidth(), false))
+	e.curscope.declareType("int32", NewGInt("", 32, true))
+	e.curscope.declareType("uint32", NewGInt("", 32, false))
+	e.curscope.declareType("int64", NewGInt("", 64, true))
+	e.curscope.declareType("uint64", NewGInt("", 64, false))
 }
 
 //XXX shift to arch type
@@ -174,61 +174,70 @@ func (e *emitter) emitFuncDecl(f *parse.FuncDecl) error {
 	e.curFuncType = ft
 	e.emit("define %s @%s() {\n", gTypeToLLVM(ft.RetType), f.Name)
 	for _, stmt := range f.Body {
-		e.emitStatement(stmt)
+		err = e.emitStatement(stmt)
+		if err != nil {
+			return err
+		}
 	}
 	e.emit("}\n")
 	return nil
 }
 
-func (e *emitter) emitStatement(stmt parse.Node) {
+func (e *emitter) emitStatement(stmt parse.Node) error {
+	var err error
 	switch stmt := stmt.(type) {
 	case *parse.VarDecl:
-		e.emitLocalVarDecl(stmt)
+		err = e.emitLocalVarDecl(stmt)
 	case *parse.Assign:
-		e.emitAssign(stmt)
+		err = e.emitAssign(stmt)
 	case *parse.Return:
-		e.emitReturn(stmt)
+		err = e.emitReturn(stmt)
 	default:
 		panic("unhandled Statement type...")
 	}
+	return err
 }
 
-func (e *emitter) emitLocalVarDecl(vd *parse.VarDecl) {
+func (e *emitter) emitLocalVarDecl(vd *parse.VarDecl) error {
 	t, err := e.parseNodeToGType(vd.Type)
 	if err != nil {
-		panic("unhandled err " + err.Error())
+		return err
 	}
 	name := e.newLLVMName()
 	e.emiti("%s = alloca %s\n", name, gTypeToLLVM(t))
-	e.emitZeroMem(name, t)
+	err = e.emitZeroMem(name, t)
+	if err != nil {
+		return err
+	}
 	s := &localSymbol{
 		alloca: name,
 		gType:  t,
 		defPos: vd.Span.Start,
 	}
 	e.curscope.declareSym(vd.Name, s)
+	return nil
 }
 
-func (e *emitter) emitAssign(ass *parse.Assign) {
+func (e *emitter) emitAssign(ass *parse.Assign) error {
 	var err error
 	l := e.emitExpression(ass.L)
 	r := e.emitExpression(ass.R)
 
 	if !l.isLVal() {
-		panic("assigning to a non lvalue")
+		return fmt.Errorf("assigning to a non lvalue")
 	}
 
 	if isConstantVal(r) {
 		r, err = e.emitRemoveConstant(r, l.getGType())
 		if err != nil {
-			panic(err.Error())
+			return err
 		}
 	}
 
 	if r.isLVal() {
 		r, err = e.emitRemoveLValness(r)
 		if err != nil {
-			panic(err.Error())
+			return err
 		}
 	}
 
@@ -238,8 +247,9 @@ func (e *emitter) emitAssign(ass *parse.Assign) {
 	lstr := fmt.Sprintf("%s* %s", gTypeToLLVM(l.getGType()), l.getLLVMRepr())
 	err = e.emitStore(lstr, r)
 	if err != nil {
-		panic("unhandled error in emit store")
+		return err
 	}
+	return nil
 }
 
 func (e *emitter) emitStore(llvmptr string, v Value) error {
@@ -253,30 +263,31 @@ func (e *emitter) emitStore(llvmptr string, v Value) error {
 	}
 }
 
-func (e *emitter) emitReturn(r *parse.Return) {
+func (e *emitter) emitReturn(r *parse.Return) error {
 	var err error
 	v := e.emitExpression(r.Expr)
 	if v.isLVal() {
 		v, err = e.emitRemoveLValness(v)
 		if err != nil {
-			panic("error emitting return " + err.Error())
+			return err
 		}
 	}
 	var llvmType string
 	if isConstantVal(v) {
 		v, err = e.emitRemoveConstant(v, e.curFuncType.RetType)
 		if err != nil {
-			panic("error converting constant to return type")
+			return fmt.Errorf("unable to convert constant to return type at %s", r.Span.Start)
 		}
 		llvmType = gTypeToLLVM(e.curFuncType.RetType)
 	} else {
 		if !v.getGType().Equals(e.curFuncType.RetType) {
-			panic("failed type check")
+			return fmt.Errorf("type does not match function return type %s", r.Span.Start)
 		}
 		llvmType = gTypeToLLVM(v.getGType())
 
 	}
 	e.emiti("ret %s %s\n", llvmType, v.getLLVMRepr())
+	return nil
 }
 
 func (e *emitter) emitZeroMem(name string, t GType) error {
