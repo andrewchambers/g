@@ -41,9 +41,9 @@ func NewGInt(bits uint, signed bool) *GInt {
 }
 
 func isBool(t GType) bool {
-	v,ok := t.(*GInt)
+	v, ok := t.(*GInt)
 	if ok {
-	    return v.Bits == 1
+		return v.Bits == 1
 	}
 	return false
 }

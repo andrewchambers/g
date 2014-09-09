@@ -20,15 +20,15 @@ type symbol interface {
 }
 
 type localSymbol struct {
-    alloca string
-    gType  GType
-    defPos parse.FilePos
+	alloca string
+	gType  GType
+	defPos parse.FilePos
 }
 
 type globalSymbol struct {
-    alloca string
-    gType  GType
-    defPos parse.FilePos
+	alloca string
+	gType  GType
+	defPos parse.FilePos
 }
 
 type scope struct {
@@ -44,21 +44,20 @@ func newGlobalSymbol(p parse.FilePos) symbol {
 }
 
 func (g *globalSymbol) getGType() GType {
-    return g.gType
+	return g.gType
 }
 
 func (g *globalSymbol) getDefPos() parse.FilePos {
-    return g.defPos
+	return g.defPos
 }
 
 func (l *localSymbol) getGType() GType {
-    return l.gType
+	return l.gType
 }
 
 func (l *localSymbol) getDefPos() parse.FilePos {
-    return l.defPos
+	return l.defPos
 }
-
 
 func newScope(parent *scope) *scope {
 	s := &scope{}

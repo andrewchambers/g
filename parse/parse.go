@@ -248,15 +248,15 @@ func (p *parser) parseSimpleStatement() Node {
 	ret := p.parseExpression()
 	switch p.curTok.Kind {
 	case '=', ADDASSIGN, MULASSIGN:
-	    ass := &Assign{}
-	    ass.Op = p.curTok.Kind
-	    ass.L = ret	    
+		ass := &Assign{}
+		ass.Op = p.curTok.Kind
+		ass.L = ret
 		p.next()
-	 	r := p.parseExpression()
-	 	ass.R = r
-	 	ass.Span = ass.L.GetSpan()
-	 	ass.Span.End = ass.R.GetSpan().End
-	 	ret = ass
+		r := p.parseExpression()
+		ass.R = r
+		ass.Span = ass.L.GetSpan()
+		ass.Span.End = ass.R.GetSpan().End
+		ret = ass
 	case INC, DEC:
 		p.next()
 	default:
@@ -431,7 +431,7 @@ func (p *parser) parsePrimaryExpression() Node {
 	case STRING:
 		ret = p.parseString()
 	case '(':
-	    p.expect('(')
+		p.expect('(')
 		ret = p.parseExpression()
 		p.expect(')')
 	default:

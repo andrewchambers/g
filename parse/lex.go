@@ -180,7 +180,7 @@ func (l *lexer) lex() {
 				next, _ := l.readRune()
 				switch next {
 				case '=':
-				    l.sendTok(XORASSIGN, "^=")
+					l.sendTok(XORASSIGN, "^=")
 				default:
 					l.unreadRune()
 					l.sendTok('^', "^")
