@@ -184,12 +184,12 @@ func (n *File) Dump(d uint) string {
 }
 
 func (n *For) GetSpan() FileSpan { return n.span }
-func (n *For) Dump(depth uint) string {
+func (n *For) Dump(d uint) string {
 	return fmt.Sprintf("(For %s %s %s %s)", n.init, n.cond, n.step, n.body)
 }
 
 func (n *If) GetSpan() FileSpan { return n.span }
-func (n *If) Dump(depth uint) string {
+func (n *If) Dump(d uint) string {
 	return fmt.Sprintf("(if %s %s %s)", n.cond, n.body, n.els)
 }
 
