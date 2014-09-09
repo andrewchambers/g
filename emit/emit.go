@@ -95,6 +95,10 @@ func (e *emitter) addBuiltinTypes() {
 	e.curscope.declareType("bool",NewGInt(1, false))
 	e.curscope.declareType("int", NewGInt(e.getIntWidth(), true))
 	e.curscope.declareType("uint",NewGInt(e.getIntWidth(), false))
+	e.curscope.declareType("int32", NewGInt(32, true))
+	e.curscope.declareType("uint32",NewGInt(32, false))
+	e.curscope.declareType("int64", NewGInt(64, true))
+	e.curscope.declareType("uint64",NewGInt(64, false))
 }
 
 //XXX shift to arch type
@@ -192,7 +196,7 @@ func (e *emitter) emitStatement(stmt parse.Node) {
 func (e *emitter) emitLocalVarDecl(vd *parse.VarDecl) {
     t,err := e.parseNodeToGType(vd.Type)
     if err != nil {
-        panic("unhandled err")
+        panic("unhandled err " + err.Error())
     }
     name := e.newLLVMName()
     e.emiti("%s = alloca %s\n",name,gTypeToLLVM(t))
@@ -215,12 +219,10 @@ func (e *emitter) emitReturn(r *parse.Return) {
 	    }
 	}
 	var llvmType string
-	_, ok := v.getGType().(*GConstant)
-	if ok {
-		_, ok := e.curFuncType.RetType.(*GInt)
-		if !ok {
-			// XXX
-			panic("cannot cast constant to return type")
+	if isConstantVal(v) {
+		v,err = e.emitRemoveConstant(v,e.curFuncType.RetType)
+		if err != nil {
+		    panic("error converting constant to return type")
 		}
 		llvmType = gTypeToLLVM(e.curFuncType.RetType)
 	} else {
@@ -275,6 +277,28 @@ func (e *emitter) emitRemoveLValness(v Value) (Value,error) {
     }
 }
 
+func (e *emitter) emitRemoveConstant(v Value,hint GType) (Value,error) {
+    if !isConstantVal(v) {
+        panic("internal error")
+    }
+    switch v := v.(type) {
+        case *intConstant:
+            switch hint := hint.(type) {
+                case *GInt:
+                    ret := &exprValue{
+                        llvmName: fmt.Sprintf("%d",v.val),
+	                    lval:     false,
+	                    gType:    hint,
+                    }
+                    return ret,nil
+                default:
+                    return nil,fmt.Errorf("unable to convert constant to XXX")
+            }
+        default:
+            return nil,fmt.Errorf("internal error emitRemoveConstantNess")
+    }
+}
+
 func (e *emitter) emitExpression(expr parse.Node) Value {
 	switch expr := expr.(type) {
 	case *parse.Constant:
@@ -324,7 +348,7 @@ func isIntType(t GType) bool {
 }
 
 func (e *emitter) emitBinop(b *parse.Binop) Value {
-
+    var err error
 	l := e.emitExpression(b.L)
 	r := e.emitExpression(b.R)
 
@@ -334,6 +358,34 @@ func (e *emitter) emitBinop(b *parse.Binop) Value {
 			panic(err)
 		}
 		return c
+	}
+	
+	if isConstantVal(l) {
+	    l,err = e.emitRemoveConstant(l,r.getGType())
+	    if err != nil {
+	        panic(err.Error())
+	    }
+	}
+	
+	if isConstantVal(r) {
+	    r,err = e.emitRemoveConstant(r,l.getGType())
+	    if err != nil {
+	        panic(err.Error())
+	    }
+	}
+	
+	if l.isLVal() {
+	    l,err = e.emitRemoveLValness(l)
+	    if err != nil {
+	        panic(err.Error())
+	    }
+	}
+	
+	if r.isLVal() {
+	    r,err = e.emitRemoveLValness(r)
+	    if err != nil {
+	        panic(err.Error())
+	    }
 	}
 
 	lstr := fmt.Sprintf("%s %s", gTypeToLLVM(l.getGType()), l.getLLVMRepr())
@@ -346,10 +398,17 @@ func (e *emitter) emitBinop(b *parse.Binop) Value {
 	if !isIntType(l.getGType()) {
 		panic("arithmetic on non int type")
 	}
-
+    
+    ret := &exprValue{
+        llvmName: e.newLLVMName(),
+        gType: l.getGType(),
+        lval: false,
+    }
+    
 	switch b.Op {
 	case '+':
-		e.emiti("new = add %s %s\n", lstr, rstr)
+		e.emiti("%s = add %s %s\n",ret.llvmName, lstr, rstr)
+		return ret
 	default:
 		panic("unreachable")
 	}
@@ -408,6 +467,6 @@ func gTypeToLLVM(t GType) string {
 			panic("unreachable.")
 		}
 	default:
-		panic("unreachable")
+		panic("unreachable: bad gtype " + fmt.Sprintf("%s",t))
 	}
 }
