@@ -16,9 +16,9 @@ type File struct {
 }
 
 type For struct {
-	span             FileSpan
-	init, cond, step Node
-	body             []Node
+	SpanProvider
+	Init, Cond, Step Node
+	Body             []Node
 }
 
 type If struct {
@@ -55,6 +55,10 @@ type Binop struct {
 	SpanProvider
 	Op   TokenKind
 	L, R Node
+}
+
+type EmptyStatement struct {
+	SpanProvider
 }
 
 type Assign struct {
@@ -179,9 +183,13 @@ func (n *File) Dump(d uint) string {
 	return ret
 }
 
-func (n *For) GetSpan() FileSpan { return n.span }
+func (n *EmptyStatement) Dump(d uint) string {
+	return ws(d) + "empty;"
+}
+
+
 func (n *For) Dump(d uint) string {
-	return fmt.Sprintf("(For %s %s %s %s)", n.init, n.cond, n.step, n.body)
+	return fmt.Sprintf("(FOR)")
 }
 
 func (n *If) Dump(d uint) string {

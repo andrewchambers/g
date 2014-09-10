@@ -153,7 +153,6 @@ func EmitModule(out *bufio.Writer, file *parse.File) error {
 }
 
 func (e *emitter) resolveSymbols(n parse.Node) error {
-    
         switch n := n.(type) {
             case *parse.FuncDecl:
                 e.pushScope()
@@ -204,19 +203,44 @@ func (e *emitter) resolveSymbols(n parse.Node) error {
                         return err
                     }
                 }
+            case *parse.For:
+                if n.Init != nil {
+                    err := e.resolveSymbols(n.Init)
+                    if err != nil {
+                        return err
+                    }
+                }
+                if n.Cond != nil {
+                    err := e.resolveSymbols(n.Cond)
+                    if err != nil {
+                        return err
+                    }
+                }
+                if n.Step != nil {
+                    err := e.resolveSymbols(n.Step)
+                    if err != nil {
+                        return err
+                    }
+                }
+                for _,subn := range n.Body {
+                    err := e.resolveSymbols(subn)
+                    if err != nil {
+                        return err
+                    }
+                }
             case *parse.Return:
                 err := e.resolveSymbols(n.Expr)
                 if err != nil {
                     return err
                 }
-            case *parse.Constant:
-                //nothing
             case *parse.Ident:
                 sym,err := e.curscope.lookupSym(n.Val)
                 if err != nil {
                     return fmt.Errorf("%s at %s:%s",err,n.Span.Path,n.Span.Start)
                 }
                 e.symbolMap[n] = sym 
+        	case *parse.EmptyStatement,*parse.Constant:
+        	    //nothing
             default:
                 panic(n) 
         }
@@ -304,8 +328,14 @@ func (e *emitter) emitStatement(stmt parse.Node) error {
 		err = e.emitReturn(stmt)
 	case *parse.If:
 		err = e.emitIf(stmt)
+	case *parse.For:
+		err = e.emitFor(stmt)
+	case *parse.EmptyStatement:
+		err = nil
+	case *parse.Binop:
+	    _,err = e.emitExpression(stmt)
 	default:
-		panic("unhandled Statement type...")
+		panic(stmt)
 	}
 	return err
 }
@@ -352,6 +382,61 @@ func (e *emitter) emitIf(i *parse.If) error {
     e.emitl(after)
     return nil
 }
+
+func (e *emitter) emitFor(f *parse.For) error {
+    if f.Init != nil {
+        err := e.emitStatement(f.Init)
+        if err != nil {
+            return err
+        }
+    }
+    
+    loopbegin := e.newLLVMLabel()
+    loopbody := e.newLLVMLabel()
+    loopexit := e.newLLVMLabel()
+    
+    e.emitl(loopbegin)
+    
+    if f.Cond != nil {
+        v,err := e.emitExpression(f.Cond)
+        if err != nil {
+            return err
+        }
+        if !isBool(v.getGType()) {
+            return fmt.Errorf("For loop condition requires a bool expression %s:%s",f.Cond.GetSpan().Path,f.Cond.GetSpan().Start)
+        }
+        if v.isLVal() {
+            v,err = e.emitRemoveLValness(v)
+            if err != nil {
+                return err
+            }
+        }
+        if isConstantVal(v) {
+            v,err = e.emitRemoveConstant(v,builtinBoolGType)
+            if err != nil {
+                return err
+            }
+        }
+        e.emiti("br i1 %s, label %s, label %s\n",v.getLLVMRepr(),loopbody,loopexit)
+    }
+    e.emitl(loopbody)
+    for _, stmt := range f.Body {
+        err := e.emitStatement(stmt)
+        if err != nil {
+            return err
+        }
+    }
+    if f.Step != nil {
+        err := e.emitStatement(f.Step)
+        if err != nil {
+            return err
+        }   
+    }
+    e.emiti("br label %s\n",loopbegin)
+    e.emitl(loopexit)
+    return nil
+}
+
 
 func (e *emitter) emitAssign(ass *parse.Assign) error {
 	
@@ -644,8 +729,6 @@ func (e *emitter) emitBinop(b *parse.Binop) (Value,error) {
 	    }
 		e.emiti("%s = icmp eq %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
 		return ret,nil
-	default:
-		panic("unreachable")
 	}    
 
 	ret := &exprValue{

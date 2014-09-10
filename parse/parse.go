@@ -220,7 +220,8 @@ func (p *parser) parseStatement() Node {
 		p.expect(';')
 		return ret
 	case FOR:
-		p.parseFor()
+		ret := p.parseFor()
+		return ret
 	case IF:
 		ret := p.parseIf()
 		return ret
@@ -246,6 +247,11 @@ func (p *parser) parseStruct() Node {
 }
 
 func (p *parser) parseSimpleStatement() Node {
+	if p.curTok.Kind == ';' {
+	    ret := &EmptyStatement{}
+	    ret.Span = p.curTok.Span
+	    return ret
+	}
 	ret := p.parseExpression()
 	switch p.curTok.Kind {
 	case '=', ADDASSIGN, MULASSIGN:
@@ -266,20 +272,41 @@ func (p *parser) parseSimpleStatement() Node {
 
 }
 
-func (p *parser) parseFor() {
+func (p *parser) parseFor() *For {
+	ret := &For{}
+	ret.Span = p.curTok.Span
 	p.expect(FOR)
-	if p.curTok.Kind != '{' {
-		p.parseSimpleStatement()
+	
+	if p.curTok.Kind == '{' {
+    	p.expect('{')
+	    p.parseStatementList(&ret.Body)
+	    p.expect('}')
+	    return ret
 	}
-	if p.curTok.Kind == ';' {
-		p.next()
-		p.parseExpression()
-		p.expect(';')
-		p.parseSimpleStatement()
+	
+    ret.Init = p.parseSimpleStatement()
+	
+	if p.curTok.Kind == '{' {
+	    ret.Cond = ret.Init
+	    ret.Init = nil
+        p.expect('{')
+        p.parseStatementList(&ret.Body)
+        p.expect('}')
+	    return ret
+	}
+	p.expect(';')
+    	
+	if p.curTok.Kind != ';' {
+		ret.Cond = p.parseExpression()
+	}
+	p.expect(';')
+	if p.curTok.Kind != '{' {
+	    ret.Step = p.parseSimpleStatement()
 	}
 	p.expect('{')
-	p.parseStatementList(nil)
-	p.expect('}')
+    p.parseStatementList(&ret.Body)
+    p.expect('}')
+    return ret
 }
 
 func (p *parser) parseIf() *If {
