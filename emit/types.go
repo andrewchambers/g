@@ -33,9 +33,16 @@ type GArray struct {
 	ArrayOf GType
 }
 
-func NewGInt(alias string, bits uint, signed bool) *GInt {
-	return &GInt{alias, bits, signed}
-}
+
+var builtinBoolGType GType = &GInt{"bool", 1, false}
+var builtinInt8GType GType = &GInt{"int8", 8, true}
+var builtinInt16GType GType = &GInt{"int16", 16, true}
+var builtinInt32GType GType = &GInt{"int32", 32, true}
+var builtinInt64GType GType = &GInt{"int64", 64, true}
+var builtinUInt8GType GType = &GInt{"int8", 8, false}
+var builtinUInt16GType GType = &GInt{"uint16", 16, false}
+var builtinUInt32GType GType = &GInt{"uint32", 32, false}
+var builtinUInt64GType GType = &GInt{"uint64", 64, false}
 
 func isBool(t GType) bool {
 	v, ok := t.(*GInt)

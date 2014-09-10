@@ -74,7 +74,7 @@ func (c *boolConstant) isLVal() bool {
 }
 
 func (c *boolConstant) getGType() GType {
-	return NewGInt("", 1, false)
+	return builtinBoolGType
 }
 
 func newEmitter(out *bufio.Writer) *emitter {
@@ -98,21 +98,20 @@ func (e *emitter) newLLVMName() string {
 }
 
 func (e *emitter) addBuiltinTypes() {
-	e.curscope.declareType("bool",NewGInt("bool", 1, false))
-	e.curscope.declareType("int", NewGInt("int", e.getIntWidth(), true))
-	e.curscope.declareType("uint", NewGInt("uint", e.getIntWidth(), false))
-	e.curscope.declareType("int32", NewGInt("", 32, true))
-	e.curscope.declareType("uint32", NewGInt("", 32, false))
-	e.curscope.declareType("int64", NewGInt("", 64, true))
-	e.curscope.declareType("uint64", NewGInt("", 64, false))
+	e.curscope.declareType("bool",builtinBoolGType)
+	e.curscope.declareType("int", builtinInt64GType)
+	e.curscope.declareType("int8", builtinInt8GType)
+	e.curscope.declareType("int16",builtinInt16GType)
+	e.curscope.declareType("int32",builtinInt32GType)
+	e.curscope.declareType("int64",builtinInt64GType)
+	e.curscope.declareType("uint", builtinUInt64GType)
+	e.curscope.declareType("uint8", builtinUInt8GType)
+	e.curscope.declareType("uint16",builtinUInt16GType)
+	e.curscope.declareType("uint32",builtinUInt32GType)
+	e.curscope.declareType("uint64",builtinUInt64GType)
 	
 	e.curscope.declareSym("true", &constSymbol{&boolConstant{true},nil})
 	e.curscope.declareSym("false", &constSymbol{&boolConstant{true},nil})
-}
-
-//XXX shift to arch type
-func (e *emitter) getIntWidth() uint {
-	return 64
 }
 
 func (e *emitter) pushScope() {
