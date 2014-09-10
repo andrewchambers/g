@@ -329,7 +329,7 @@ func (e *emitter) emitIf(i *parse.If) error {
         }
     }
     if isConstantVal(v) {
-        v,err = e.emitRemoveConstant(v,&GInt{"bool",1,false})
+        v,err = e.emitRemoveConstant(v,builtinBoolGType)
         if err != nil {
             return err
         }
@@ -639,7 +639,7 @@ func (e *emitter) emitBinop(b *parse.Binop) (Value,error) {
 	case parse.EQ:
 		ret := &exprValue{
 		    llvmName: e.newLLVMName(),
-		    gType:    &GInt{"bool",1,false},
+		    gType:    builtinBoolGType,
 		    lval:     false,
 	    }
 		e.emiti("%s = icmp eq %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
