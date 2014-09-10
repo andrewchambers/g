@@ -239,6 +239,11 @@ func (e *emitter) resolveSymbols(n parse.Node) error {
                     return fmt.Errorf("%s at %s:%s",err,n.Span.Path,n.Span.Start)
                 }
                 e.symbolMap[n] = sym 
+        	case *parse.ExpressionStatement:
+                err := e.resolveSymbols(n.Expr)
+                if err != nil {
+                    return err
+                }
         	case *parse.EmptyStatement,*parse.Constant:
         	    //nothing
             default:
@@ -332,8 +337,8 @@ func (e *emitter) emitStatement(stmt parse.Node) error {
 		err = e.emitFor(stmt)
 	case *parse.EmptyStatement:
 		err = nil
-	case *parse.Binop,*parse.Constant,*parse.Ident:
-	    _,err = e.emitExpression(stmt)
+	case *parse.ExpressionStatement:
+	    _,err = e.emitExpression(stmt.Expr)
 	default:
 		panic(stmt)
 	}
@@ -614,7 +619,7 @@ func (e *emitter) emitExpression(expr parse.Node) (Value,error) {
 	case *parse.Ident:
 		return e.emitIdent(expr)
 	default:
-		panic("unhandled...")
+		panic(expr)
 	}
 }
 

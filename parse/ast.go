@@ -61,6 +61,11 @@ type EmptyStatement struct {
 	SpanProvider
 }
 
+type ExpressionStatement struct {
+	SpanProvider
+	Expr Node
+}
+
 type Assign struct {
 	SpanProvider
 	Op   TokenKind
@@ -184,12 +189,17 @@ func (n *File) Dump(d uint) string {
 }
 
 func (n *EmptyStatement) Dump(d uint) string {
-	return ws(d) + "empty;"
+	return ws(d) + "empty;\n"
 }
 
+func (n *ExpressionStatement) Dump(d uint) string {
+	ret := ws(d) + "ExpressionStatement:\n"
+	ret += n.Expr.Dump(d + 2)
+	return ret
+}
 
 func (n *For) Dump(d uint) string {
-	return fmt.Sprintf("(FOR)")
+	return fmt.Sprintf(ws(d) + "(FOR)\n")
 }
 
 func (n *If) Dump(d uint) string {

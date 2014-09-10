@@ -215,7 +215,7 @@ func (p *parser) parseStatement() Node {
 		ret := p.parseVarDecl()
 		p.expect(';')
 		return ret
-	case IDENTIFIER, CONSTANT, STRING:
+	case IDENTIFIER, CONSTANT, STRING, ';':
 		ret := p.parseSimpleStatement()
 		p.expect(';')
 		return ret
@@ -267,6 +267,10 @@ func (p *parser) parseSimpleStatement() Node {
 	case INC, DEC:
 		p.next()
 	default:
+	    es := &ExpressionStatement{}
+	    es.Expr = ret
+	    es.Span = ret.GetSpan()
+	    ret = es
 	}
 	return ret
 
@@ -288,6 +292,11 @@ func (p *parser) parseFor() *For {
 	
 	if p.curTok.Kind == '{' {
 	    ret.Cond = ret.Init
+	    es,ok := ret.Cond.(*ExpressionStatement)
+	    if ! ok {
+	        p.syntaxError("expected an expression", ret.Cond.GetSpan())
+	    }
+	    ret.Cond = es.Expr 
 	    ret.Init = nil
         p.expect('{')
         p.parseStatementList(&ret.Body)
