@@ -332,7 +332,7 @@ func (e *emitter) emitStatement(stmt parse.Node) error {
 		err = e.emitFor(stmt)
 	case *parse.EmptyStatement:
 		err = nil
-	case *parse.Binop:
+	case *parse.Binop,*parse.Constant,*parse.Ident:
 	    _,err = e.emitExpression(stmt)
 	default:
 		panic(stmt)
