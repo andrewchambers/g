@@ -154,7 +154,7 @@ func (p *parser) parseFuncDecl() *FuncDecl {
 	p.expect(')')
 	ret.RetType = p.parseType(true)
 	p.expect('{')
-	p.parseStatementList(ret)
+	p.parseStatementList(&ret.Body)
 	p.expect('}')
 	return ret
 }
@@ -194,10 +194,10 @@ func (p *parser) parseConst() {
 	p.expect(CONST)
 }
 
-func (p *parser) parseStatementList(sl StatementList) {
+func (p *parser) parseStatementList(sl *[]Node) {
 	for p.curTok.Kind != '}' && p.curTok.Kind != EOF {
 		s := p.parseStatement()
-		sl.addStatement(s)
+		*sl = append(*sl,s)
 	}
 }
 
@@ -222,7 +222,8 @@ func (p *parser) parseStatement() Node {
 	case FOR:
 		p.parseFor()
 	case IF:
-		p.parseIf()
+		ret := p.parseIf()
+		return ret
 	default:
 		p.syntaxError("error parsing statement", p.curTok.Span)
 	}
@@ -281,25 +282,28 @@ func (p *parser) parseFor() {
 	p.expect('}')
 }
 
-func (p *parser) parseIf() {
+func (p *parser) parseIf() *If {
+    ret := &If{}
+    ret.Span = p.curTok.Span
 	p.expect(IF)
-	p.parseExpression()
+	ret.Cond = p.parseExpression()
 	p.expect('{')
-	p.parseStatementList(nil)
+	p.parseStatementList(&ret.Body)
 	p.expect('}')
 	if p.curTok.Kind == ELSE {
 		p.next()
 		switch p.curTok.Kind {
 		case IF:
-			p.parseIf()
+			ret.Els = []Node{p.parseIf()}
 		case '{':
 			p.expect('{')
-			p.parseStatementList(nil)
+			p.parseStatementList(&ret.Els)
 			p.expect('}')
 		default:
 			p.syntaxError("If ", p.curTok.Span)
 		}
 	}
+	return ret
 }
 
 func (p *parser) parseExpression() Node {

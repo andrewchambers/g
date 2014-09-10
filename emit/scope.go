@@ -25,8 +25,12 @@ type localSymbol struct {
 	defPos parse.FilePos
 }
 
+type constSymbol struct {
+	v      Value
+	defPos *parse.FilePos
+}
+
 type globalSymbol struct {
-	alloca string
 	gType  GType
 	defPos parse.FilePos
 }
@@ -49,6 +53,14 @@ func (g *globalSymbol) getGType() GType {
 
 func (g *globalSymbol) getDefPos() parse.FilePos {
 	return g.defPos
+}
+
+func (g *constSymbol) getGType() GType {
+	return &GConstant{}
+}
+
+func (g *constSymbol) getDefPos() parse.FilePos {
+	return *g.defPos
 }
 
 func (l *localSymbol) getGType() GType {
@@ -79,7 +91,7 @@ func (s *scope) declareType(k string, t GType) error {
 func (s *scope) declareSym(k string, sym symbol) error {
 	v, ok := s.symkv[k]
 	if ok {
-		return fmt.Errorf("symbol %s already defined at %s", k, v.getDefPos())
+		return fmt.Errorf("ident %s already defined at %s", k, v.getDefPos())
 	}
 	s.symkv[k] = sym
 	return nil
@@ -104,5 +116,5 @@ func (s *scope) lookupSym(k string) (symbol, error) {
 	if s.parent != nil {
 		return s.parent.lookupSym(k)
 	}
-	return nil, fmt.Errorf("symbol %s is not declared", k)
+	return nil, fmt.Errorf("ident %s is not declared", k)
 }

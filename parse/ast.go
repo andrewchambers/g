@@ -15,10 +15,6 @@ type File struct {
 	VarDecls   []*VarDecl
 }
 
-type StatementList interface {
-	addStatement(n Node)
-}
-
 type For struct {
 	span             FileSpan
 	init, cond, step Node
@@ -26,10 +22,10 @@ type For struct {
 }
 
 type If struct {
-	span FileSpan
-	cond Node
-	body []Node
-	els  []Node
+	SpanProvider
+	Cond Node
+	Body []Node
+	Els  []Node
 }
 
 type Selector struct {
@@ -188,9 +184,20 @@ func (n *For) Dump(d uint) string {
 	return fmt.Sprintf("(For %s %s %s %s)", n.init, n.cond, n.step, n.body)
 }
 
-func (n *If) GetSpan() FileSpan { return n.span }
 func (n *If) Dump(d uint) string {
-	return fmt.Sprintf("(if %s %s %s)", n.cond, n.body, n.els)
+    ret := ws(d) + "If:\n"
+	ret += ws(d+2) + "Cond:\n"
+    ret += n.Cond.Dump(d+4)
+    ret += ws(d+2) + "Body:\n"
+	for _, stmt := range n.Body {
+		ret += stmt.Dump(d + 4)
+	}
+	if n.Els != nil {
+	    for _, stmt := range n.Els {
+		    ret += stmt.Dump(d + 4)
+	    }
+	}
+	return ret
 }
 
 func (n *Binop) Dump(d uint) string {
