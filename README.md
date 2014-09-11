@@ -2,18 +2,18 @@
 
 A new programming language - WIP
 
-Imagine C with simpler syntax (based on Go) and a few cool things like packages and multiple returns
+Imagine C with simpler syntax (based on Go) and a few cool things like packages and multiple returns.
 
 G aims to...
 
-* Be easy to parse any analyze
+* Be easy to parse any analyze.
 * Do anything C can do.
 * Be lean like C.
 * Have perfect interop with C.
 * Have clear mapping to underlying machine code.
 * Have inline assembly support.
 * Use packages similar to Go and not headers.
-* Have new features which are proven like multiple return.
+* Have useful but minimalist extra features.
 
 And more.
 
