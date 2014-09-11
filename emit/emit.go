@@ -98,6 +98,7 @@ func (e *emitter) newLLVMName() string {
 }
 
 func (e *emitter) addBuiltinTypes() {
+	// Built in types
 	e.curscope.declareType("bool",builtinBoolGType)
 	e.curscope.declareType("int", builtinInt64GType)
 	e.curscope.declareType("int8", builtinInt8GType)
@@ -109,7 +110,7 @@ func (e *emitter) addBuiltinTypes() {
 	e.curscope.declareType("uint16",builtinUInt16GType)
 	e.curscope.declareType("uint32",builtinUInt32GType)
 	e.curscope.declareType("uint64",builtinUInt64GType)
-	
+	// Built in symbols
 	e.curscope.declareSym("true", &constSymbol{&boolConstant{true},nil})
 	e.curscope.declareSym("false", &constSymbol{&boolConstant{true},nil})
 }
@@ -128,6 +129,10 @@ func (e *emitter) emit(s string, args ...interface{}) {
 
 func (e *emitter) emiti(s string, args ...interface{}) {
 	e.emit("    "+s, args...)
+}
+
+func (e *emitter) emitrawi(s string) {
+	fmt.Fprint(e.out,"    " + s)
 }
 
 func (e *emitter) emitl(l string) {
@@ -168,6 +173,20 @@ func (e *emitter) resolveSymbols(n parse.Node) error {
                 if err != nil {
                     return err
                 }
+            case *parse.Call:
+                
+                
+                err := e.resolveSymbols(n.FuncLike)
+                if err != nil {
+                    return err
+                }
+                for _,arg := range n.Args {
+                    err = e.resolveSymbols(arg)
+                    if err != nil {
+                        return err
+                    }
+                }
+
             case *parse.Binop:
                 err := e.resolveSymbols(n.L)
                 if err != nil {
@@ -283,8 +302,12 @@ func (e *emitter) collectGlobalSymbols(file *parse.File) error {
 		}
 	}
 	for _, fd := range file.FuncDecls {
-		sym := newGlobalSymbol(fd.Span.Start)
-		err := e.curscope.declareSym(fd.Name, sym)
+	    ty,err := e.funcDeclToGType(fd)
+	    if err != nil {
+	        return err
+	    }
+		sym := newGlobalFuncSymbol(ty,fd.Span.Start)
+		err = e.curscope.declareSym(fd.Name, sym)
 		if err != nil {
 			return fmt.Errorf("bad func decl: %s %s:%v", err, fd.Span.Path, fd.Span.Start)
 		}
@@ -614,6 +637,8 @@ func (e *emitter) emitExpression(expr parse.Node) (Value,error) {
 	case *parse.Constant:
 		v := &intConstant{expr.Val}
 		return v,nil
+	case *parse.Call:
+		return e.emitCall(expr)
 	case *parse.Binop:
 		return e.emitBinop(expr)
 	case *parse.Ident:
@@ -621,6 +646,78 @@ func (e *emitter) emitExpression(expr parse.Node) (Value,error) {
 	default:
 		panic(expr)
 	}
+}
+
+func (e *emitter) emitCall(c *parse.Call) (Value,error) {
+    
+    var funcType *GFunc
+    isGlobalCall := false
+    funcName := ""
+    
+    sym,ok := e.symbolMap[c.FuncLike]
+    if ok {
+        fsym,ok := sym.(*globalFuncSymbol)
+        if ok {
+            funcType = fsym.gType
+            ident,ok := c.FuncLike.(*parse.Ident)
+            if !ok {
+                panic("internal error - non ident in symbol map!")
+            }
+            funcName = ident.Val
+            isGlobalCall = true
+        }
+    } else {
+        panic("unimplemented...")        
+    }
+    if len(c.Args) != len(funcType.ArgTypes) {
+        return nil, fmt.Errorf("expected %d argument(s), got %d",len(funcType.ArgTypes),len(c.Args))
+    }
+    
+    argvalues := make([]Value,len(c.Args))
+    for idx, argNode := range c.Args {
+        arg,err := e.emitExpression(argNode)
+        if err != nil {
+            return nil,err
+        }
+    	if isConstantVal(arg) {
+		    arg, err = e.emitRemoveConstant(arg, funcType.ArgTypes[idx])
+		    if err != nil {
+			    return nil,err
+		    }
+	    }
+	    if arg.isLVal() {
+		    arg, err = e.emitRemoveLValness(arg)
+		    if err != nil {
+			    return nil,err
+		    }
+	    }
+	    if !funcType.ArgTypes[idx].Equals(arg.getGType()) {
+	        return nil,fmt.Errorf("incorrect arg type.")
+	    }
+        argvalues[idx] = arg
+    }
+    
+    funcret := e.newLLVMName()
+    if isGlobalCall {
+        callinst := fmt.Sprintf("%s = call %s @%s (",funcret, gTypeToLLVM(funcType.RetType),funcName)
+        for i,v := range argvalues {
+            callinst += fmt.Sprintf("%s %s",gTypeToLLVM(v.getGType()),v.getLLVMRepr())
+            if i != len(argvalues) -1 {
+                callinst += ", "
+            }
+        }
+        callinst += ")\n"
+        e.emitrawi(callinst)
+        ret := &exprValue {
+            gType: funcType.RetType,
+            lval: false,
+        }
+        return ret,nil
+    } else {
+        panic("unimplemented")
+    }
+    
+    panic("unreachable")
 }
 
 func (e *emitter) emitIdent(i *parse.Ident) (Value,error) {

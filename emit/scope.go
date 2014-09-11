@@ -25,6 +25,11 @@ type localSymbol struct {
 	defPos parse.FilePos
 }
 
+type globalFuncSymbol struct {
+	gType  *GFunc
+	defPos parse.FilePos
+}
+
 type constSymbol struct {
 	v      Value
 	defPos *parse.FilePos
@@ -47,6 +52,13 @@ func newGlobalSymbol(p parse.FilePos) symbol {
 	return ret
 }
 
+func newGlobalFuncSymbol(ty *GFunc,p parse.FilePos) symbol {
+	ret := &globalFuncSymbol{}
+	ret.defPos = p
+	ret.gType = ty
+	return ret
+}
+
 func (g *globalSymbol) getGType() GType {
 	return g.gType
 }
@@ -54,6 +66,15 @@ func (g *globalSymbol) getGType() GType {
 func (g *globalSymbol) getDefPos() parse.FilePos {
 	return g.defPos
 }
+
+func (f *globalFuncSymbol) getGType() GType {
+	return f.gType
+}
+
+func (f *globalFuncSymbol) getDefPos() parse.FilePos {
+	return f.defPos
+}
+
 
 func (g *constSymbol) getGType() GType {
 	return &GConstant{}

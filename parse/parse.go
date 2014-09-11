@@ -500,7 +500,8 @@ func (p *parser) parseCall(funcLike Node) *Call {
 	var args []Node
 	p.expect('(')
 	for p.curTok.Kind != ')' && p.curTok.Kind != EOF {
-		args = append(args, p.parseExpression())
+		arg := p.parseExpression()
+		args = append(args,arg)
 		if p.curTok.Kind == ',' {
 			p.next()
 		}
