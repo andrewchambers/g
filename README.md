@@ -42,6 +42,6 @@ func main() int {
 * Less memory safety than go - can access arbitrary addresses.
 * Directly output LLVM text assembly.
 * support for inline assembly
-* := syntax? it does save alot of typing.
+* := syntax? it does save alot of typing. var x = is probably less confusing to new people.
 * Bounds checking on arrays? optional or not?
 * Macros as invoked subprograms? avoids needing special dsl, just a specified data format etc.
