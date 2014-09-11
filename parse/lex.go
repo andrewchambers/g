@@ -172,6 +172,16 @@ func (l *lexer) lex() {
 			case '/':
 				next, _ := l.readRune()
 				switch next {
+				case '/':
+				    //Line comment
+				    for {
+				        next,eof := l.readRune()
+				        if next == '\n' || eof {
+				            break
+				        }
+				    }
+				case '*':
+				  l.skipUntilBlockCommentTerminator()
 				default:
 					l.unreadRune()
 					l.sendTok('/', "/")
@@ -264,6 +274,25 @@ var keywordLUT = map[string]TokenKind{
 	"type":    TYPE,
 	"var":     VAR,
 	"const":   CONST,
+}
+
+func (l *lexer) skipUntilBlockCommentTerminator() {
+    for {
+        c, eof := l.readRune()
+        if eof {
+            l.lexError("unclosed block comment.")
+        }
+        if c == '*' {
+            closeBar, eof := l.readRune()
+            if eof {
+                l.lexError("unclosed block comment.")
+            }
+            if closeBar == '/' {
+                break
+            }
+            l.unreadRune()
+        }
+    }
 }
 
 func (l *lexer) readIdentOrKeyword() {
