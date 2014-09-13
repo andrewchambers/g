@@ -1,5 +1,7 @@
 package emit
 
+import "fmt"
+
 type GType interface {
 	String() string
 	Equals(GType) bool
@@ -33,7 +35,6 @@ type GArray struct {
 	ArrayOf GType
 }
 
-
 var builtinBoolGType GType = &GInt{"bool", 1, false}
 var builtinInt8GType GType = &GInt{"int8", 8, true}
 var builtinInt16GType GType = &GInt{"int16", 16, true}
@@ -50,6 +51,18 @@ func isBool(t GType) bool {
 		return v.Bits == 1
 	}
 	return false
+}
+
+func (p *GPointer) Equals(other GType) bool {
+	o, ok := other.(*GPointer)
+	if !ok {
+		return false
+	}
+	return o.PointsTo.Equals(p.PointsTo)
+}
+
+func (p *GPointer) String() string {
+	return fmt.Sprintf("*%s", p.PointsTo.String())
 }
 
 func (*GConstant) Equals(other GType) bool {

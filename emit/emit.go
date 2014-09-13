@@ -205,6 +205,11 @@ func (e *emitter) resolveSymbols(n parse.Node) error {
 		if err != nil {
 			return err
 		}
+	case *parse.Unop:
+		err := e.resolveSymbols(n.Expr)
+		if err != nil {
+			return err
+		}
 	case *parse.Assign:
 		err := e.resolveSymbols(n.L)
 		if err != nil {
@@ -230,6 +235,11 @@ func (e *emitter) resolveSymbols(n parse.Node) error {
 			if err != nil {
 				return err
 			}
+		}
+	case *parse.PointerTo:
+		err := e.resolveSymbols(n.PointsTo)
+		if err != nil {
+			return err
 		}
 	case *parse.For:
 		if n.Init != nil {
@@ -530,6 +540,9 @@ func (e *emitter) emitAssign(ass *parse.Assign) error {
 func (e *emitter) emitStore(llvmptr string, v Value) error {
 	t := v.getGType()
 	switch t.(type) {
+	case *GPointer:
+		e.emiti("store %s %s, %s\n", gTypeToLLVM(t), v.getLLVMRepr(), llvmptr)
+		return nil
 	case *GInt:
 		e.emiti("store %s %s, %s\n", gTypeToLLVM(t), v.getLLVMRepr(), llvmptr)
 		return nil
@@ -569,6 +582,8 @@ func (e *emitter) emitReturn(r *parse.Return) error {
 
 func (e *emitter) emitZeroMem(name string, t GType) error {
 	switch t := t.(type) {
+	case *GPointer:
+		e.emiti("store %s null, %s* %s\n", gTypeToLLVM(t), gTypeToLLVM(t), name)
 	case *GInt:
 		switch t.Bits {
 		case 64:
@@ -584,10 +599,10 @@ func (e *emitter) emitZeroMem(name string, t GType) error {
 		default:
 			panic("internal error")
 		}
-		return nil
 	default:
 		return fmt.Errorf("unable to zero memory for type %s", t)
 	}
+	return nil
 }
 
 func (e *emitter) emitRemoveLValness(v Value) (Value, error) {
@@ -662,6 +677,8 @@ func (e *emitter) emitExpression(expr parse.Node) (Value, error) {
 		return e.emitCall(expr)
 	case *parse.Binop:
 		return e.emitBinop(expr)
+	case *parse.Unop:
+		return e.emitUnop(expr)
 	case *parse.Ident:
 		return e.emitIdent(expr)
 	default:
@@ -887,6 +904,46 @@ func (e *emitter) emitBinop(b *parse.Binop) (Value, error) {
 	return ret, nil
 }
 
+func (e *emitter) emitUnop(u *parse.Unop) (Value, error) {
+	v, err := e.emitExpression(u.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	if isConstantVal(v) {
+		return nil, fmt.Errorf("cannot perform unary op %s on constant", u.Op)
+	}
+
+	switch u.Op {
+	case '&':
+		if !v.isLVal() {
+			return nil, fmt.Errorf("cannot take address of non lvalue")
+		}
+		return &exprValue{
+			lval:     false,
+			llvmName: v.getLLVMRepr(),
+			gType:    &GPointer{v.getGType()},
+		}, nil
+	case '*':
+		if v.isLVal() {
+			v, err = e.emitRemoveLValness(v)
+			if err != nil {
+				return nil, err
+			}
+		}
+		p, ok := v.getGType().(*GPointer)
+		if !ok {
+			return nil, fmt.Errorf("cannot dereference non pointer type")
+		}
+		return &exprValue{
+			lval:     true,
+			gType:    p.PointsTo,
+			llvmName: v.getLLVMRepr(),
+		}, nil
+	}
+	panic("internal error")
+}
+
 func (e *emitter) funcDeclToGType(f *parse.FuncDecl) (*GFunc, error) {
 	ret := &GFunc{}
 	for _, t := range f.ArgTypes {
@@ -913,6 +970,13 @@ func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
 	case *parse.TypeAlias:
 		ret, err := e.curscope.lookupType(n.Name)
 		return ret, err
+	case *parse.PointerTo:
+		t, err := e.parseNodeToGType(n.PointsTo)
+		if err != nil {
+			return nil, err
+		}
+		ret := &GPointer{PointsTo: t}
+		return ret, nil
 	default:
 		return nil, fmt.Errorf("invalid type")
 	}
@@ -922,6 +986,8 @@ func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
 
 func gTypeToLLVM(t GType) string {
 	switch t := t.(type) {
+	case *GPointer:
+		return fmt.Sprintf("%s*", gTypeToLLVM(t.PointsTo))
 	case *GInt:
 		switch t.Bits {
 		case 64:

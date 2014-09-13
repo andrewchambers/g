@@ -177,6 +177,14 @@ func (p *parser) parseType(allowEmpty bool) Node {
 		ret.Name = p.curTok.Val
 		p.next()
 		return ret
+	case '*':
+		ret := &PointerTo{}
+		ret.Span = p.curTok.Span
+		p.next()
+		pointsTo := p.parseType(false)
+		ret.PointsTo = pointsTo
+		ret.Span.End = pointsTo.GetSpan().End
+		return ret
 	default:
 		if allowEmpty {
 			return nil
@@ -223,10 +231,6 @@ func (p *parser) parseStatement() Node {
 		ret := p.parseVarDecl()
 		p.expect(';')
 		return ret
-	case IDENTIFIER, CONSTANT, STRING, ';':
-		ret := p.parseSimpleStatement()
-		p.expect(';')
-		return ret
 	case FOR:
 		ret := p.parseFor()
 		return ret
@@ -234,14 +238,16 @@ func (p *parser) parseStatement() Node {
 		ret := p.parseIf()
 		return ret
 	default:
-		p.syntaxError("error parsing statement", p.curTok.Span)
+		ret := p.parseSimpleStatement()
+		p.expect(';')
+		return ret
 	}
 	panic("unreachable")
 }
 
 func (p *parser) parseStruct() Node {
 	ret := &Struct{}
-	ret.span = p.curTok.Span
+	ret.Span = p.curTok.Span
 	p.expect(STRUCT)
 	p.expect('{')
 	for p.curTok.Kind == IDENTIFIER {
@@ -249,7 +255,7 @@ func (p *parser) parseStruct() Node {
 		p.next()
 		ret.types = append(ret.types, p.parseType(false))
 	}
-	ret.span.End = p.curTok.Span.End
+	ret.Span.End = p.curTok.Span.End
 	p.expect('}')
 	return ret
 }
@@ -458,7 +464,20 @@ func tokToInt64(t *Token) (int64, error) {
 }
 
 func (p *parser) parsePrimaryExpression() Node {
+
+	if p.curTok.Kind == '&' || p.curTok.Kind == '*' {
+		newu := &Unop{}
+		newu.Op = p.curTok.Kind
+		newu.Span = p.curTok.Span
+		p.next()
+		expr := p.parsePrimaryExpression()
+		newu.Expr = expr
+		newu.Span.End = expr.GetSpan().End
+		return newu
+	}
+
 	var ret Node = nil
+
 	switch p.curTok.Kind {
 	case IDENTIFIER:
 		v := &Ident{}

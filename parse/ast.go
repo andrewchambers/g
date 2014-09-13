@@ -4,6 +4,11 @@ import (
 	"fmt"
 )
 
+type Node interface {
+	Dump(depth uint) string
+	GetSpan() FileSpan
+}
+
 type File struct {
 	SpanProvider
 	Pkg string
@@ -49,6 +54,17 @@ type Call struct {
 type TypeAlias struct {
 	SpanProvider
 	Name string
+}
+
+type PointerTo struct {
+	SpanProvider
+	PointsTo Node
+}
+
+type Struct struct {
+	SpanProvider
+	names []string
+	types []Node
 }
 
 type Binop struct {
@@ -138,12 +154,6 @@ func ws(depth uint) string {
 	}
 	return ret
 }
-
-type Node interface {
-	Dump(depth uint) string
-	GetSpan() FileSpan
-}
-
 func (n *File) addImport(s *String) {
 	n.Imports = append(n.Imports, s)
 }
@@ -260,15 +270,12 @@ func (n *TypeAlias) Dump(d uint) string {
 	return ret
 }
 
-type Struct struct {
-	span  FileSpan
-	names []string
-	types []Node
-}
-
-func (n *Struct) GetSpan() FileSpan { return n.span }
 func (n *Struct) Dump(depth uint) string {
 	return "(STRUCT)"
+}
+
+func (n *PointerTo) Dump(d uint) string {
+	return "(*)"
 }
 
 func (n *Ident) Dump(d uint) string {
