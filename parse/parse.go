@@ -125,11 +125,19 @@ func (p *parser) parseVarDecl() *VarDecl {
 	ret.Span = p.curTok.Span
 	p.expect(VAR)
 	ret.Name = p.curTok.Val
+	ident := &Ident{}
+	ident.Span = p.curTok.Span
+	ident.Val = p.curTok.Val
 	p.expect(IDENTIFIER)
 	ret.Type = p.parseType(false)
 	if p.curTok.Kind == '=' {
 		p.next()
-		ret.Init = p.parseExpression()
+		r := p.parseExpression()
+		ret.Init = &Assign{}
+		ret.Init.R = r
+		ret.Init.L = ident
+		ret.Init.Span = ident.Span
+		ret.Init.Span.End = r.GetSpan().End
 	}
 	return ret
 }
@@ -197,7 +205,7 @@ func (p *parser) parseConst() {
 func (p *parser) parseStatementList(sl *[]Node) {
 	for p.curTok.Kind != '}' && p.curTok.Kind != EOF {
 		s := p.parseStatement()
-		*sl = append(*sl,s)
+		*sl = append(*sl, s)
 	}
 }
 
@@ -248,9 +256,9 @@ func (p *parser) parseStruct() Node {
 
 func (p *parser) parseSimpleStatement() Node {
 	if p.curTok.Kind == ';' {
-	    ret := &EmptyStatement{}
-	    ret.Span = p.curTok.Span
-	    return ret
+		ret := &EmptyStatement{}
+		ret.Span = p.curTok.Span
+		return ret
 	}
 	ret := p.parseExpression()
 	switch p.curTok.Kind {
@@ -267,10 +275,10 @@ func (p *parser) parseSimpleStatement() Node {
 	case INC, DEC:
 		p.next()
 	default:
-	    es := &ExpressionStatement{}
-	    es.Expr = ret
-	    es.Span = ret.GetSpan()
-	    ret = es
+		es := &ExpressionStatement{}
+		es.Expr = ret
+		es.Span = ret.GetSpan()
+		ret = es
 	}
 	return ret
 
@@ -280,47 +288,47 @@ func (p *parser) parseFor() *For {
 	ret := &For{}
 	ret.Span = p.curTok.Span
 	p.expect(FOR)
-	
+
 	if p.curTok.Kind == '{' {
-    	p.expect('{')
-	    p.parseStatementList(&ret.Body)
-	    p.expect('}')
-	    return ret
+		p.expect('{')
+		p.parseStatementList(&ret.Body)
+		p.expect('}')
+		return ret
 	}
-	
-    ret.Init = p.parseSimpleStatement()
-	
+
+	ret.Init = p.parseSimpleStatement()
+
 	if p.curTok.Kind == '{' {
-	    ret.Cond = ret.Init
-	    es,ok := ret.Cond.(*ExpressionStatement)
-	    if ! ok {
-	        p.syntaxError("expected an expression", ret.Cond.GetSpan())
-	    }
-	    ret.Cond = es.Expr 
-	    ret.Init = nil
-        p.expect('{')
-        p.parseStatementList(&ret.Body)
-        p.expect('}')
-	    return ret
+		ret.Cond = ret.Init
+		es, ok := ret.Cond.(*ExpressionStatement)
+		if !ok {
+			p.syntaxError("expected an expression", ret.Cond.GetSpan())
+		}
+		ret.Cond = es.Expr
+		ret.Init = nil
+		p.expect('{')
+		p.parseStatementList(&ret.Body)
+		p.expect('}')
+		return ret
 	}
 	p.expect(';')
-    	
+
 	if p.curTok.Kind != ';' {
 		ret.Cond = p.parseExpression()
 	}
 	p.expect(';')
 	if p.curTok.Kind != '{' {
-	    ret.Step = p.parseSimpleStatement()
+		ret.Step = p.parseSimpleStatement()
 	}
 	p.expect('{')
-    p.parseStatementList(&ret.Body)
-    p.expect('}')
-    return ret
+	p.parseStatementList(&ret.Body)
+	p.expect('}')
+	return ret
 }
 
 func (p *parser) parseIf() *If {
-    ret := &If{}
-    ret.Span = p.curTok.Span
+	ret := &If{}
+	ret.Span = p.curTok.Span
 	p.expect(IF)
 	ret.Cond = p.parseExpression()
 	p.expect('{')
@@ -501,7 +509,7 @@ func (p *parser) parseCall(funcLike Node) *Call {
 	p.expect('(')
 	for p.curTok.Kind != ')' && p.curTok.Kind != EOF {
 		arg := p.parseExpression()
-		args = append(args,arg)
+		args = append(args, arg)
 		if p.curTok.Kind == ',' {
 			p.next()
 		}

@@ -91,7 +91,7 @@ type VarDecl struct {
 	SpanProvider
 	Name string
 	Type Node
-	Init Node
+	Init *Assign
 }
 
 type TypeDecl struct {
@@ -203,17 +203,17 @@ func (n *For) Dump(d uint) string {
 }
 
 func (n *If) Dump(d uint) string {
-    ret := ws(d) + "If:\n"
+	ret := ws(d) + "If:\n"
 	ret += ws(d+2) + "Cond:\n"
-    ret += n.Cond.Dump(d+4)
-    ret += ws(d+2) + "Body:\n"
+	ret += n.Cond.Dump(d + 4)
+	ret += ws(d+2) + "Body:\n"
 	for _, stmt := range n.Body {
 		ret += stmt.Dump(d + 4)
 	}
 	if n.Els != nil {
-	    for _, stmt := range n.Els {
-		    ret += stmt.Dump(d + 4)
-	    }
+		for _, stmt := range n.Els {
+			ret += stmt.Dump(d + 4)
+		}
 	}
 	return ret
 }

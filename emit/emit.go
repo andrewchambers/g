@@ -16,6 +16,10 @@ type emitter struct {
 	llvmNameCounter  uint
 	llvmLabelCounter uint
 	curFuncType      *GFunc
+
+	// Have we emitted any instructions into
+	// The current basic block?
+	isCurBlockEmpty bool
 }
 
 type Value interface {
@@ -130,14 +134,20 @@ func (e *emitter) emit(s string, args ...interface{}) {
 }
 
 func (e *emitter) emiti(s string, args ...interface{}) {
+	e.isCurBlockEmpty = false
 	e.emit("    "+s, args...)
 }
 
 func (e *emitter) emitrawi(s string) {
+	e.isCurBlockEmpty = false
 	fmt.Fprint(e.out, "    "+s)
 }
 
 func (e *emitter) emitl(l string) {
+	if e.isCurBlockEmpty {
+		e.emiti("br label %%%s\n", l)
+	}
+	e.isCurBlockEmpty = true
 	e.emit("  %s:\n", l)
 }
 
@@ -176,7 +186,6 @@ func (e *emitter) resolveSymbols(n parse.Node) error {
 			return err
 		}
 	case *parse.Call:
-
 		err := e.resolveSymbols(n.FuncLike)
 		if err != nil {
 			return err
@@ -187,7 +196,6 @@ func (e *emitter) resolveSymbols(n parse.Node) error {
 				return err
 			}
 		}
-
 	case *parse.Binop:
 		err := e.resolveSymbols(n.L)
 		if err != nil {
@@ -289,6 +297,12 @@ func (e *emitter) resolveLocalVarDecl(vd *parse.VarDecl) error {
 		defPos: vd.Span.Start,
 	}
 	err = e.curscope.declareSym(vd.Name, s)
+	if err != nil {
+		return err
+	}
+	if vd.Init != nil {
+		err = e.resolveSymbols(vd.Init)
+	}
 	return err
 }
 
@@ -370,6 +384,12 @@ func (e *emitter) emitStatement(stmt parse.Node) error {
 }
 
 func (e *emitter) emitLocalVarDecl(vd *parse.VarDecl) error {
+	if vd.Init != nil {
+		err := e.emitAssign(vd.Init)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -822,6 +842,7 @@ func (e *emitter) emitBinop(b *parse.Binop) (Value, error) {
 
 	llty := gTypeToLLVM(l.getGType())
 
+	//XXX refactor this into less code
 	switch b.Op {
 	case parse.EQ:
 		ret := &exprValue{
@@ -830,6 +851,7 @@ func (e *emitter) emitBinop(b *parse.Binop) (Value, error) {
 			lval:     false,
 		}
 		e.emiti("%s = icmp eq %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
+		return ret, nil
 	case '<':
 		ret := &exprValue{
 			llvmName: e.newLLVMName(),
