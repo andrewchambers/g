@@ -6,9 +6,9 @@ Imagine C with simpler syntax (based on Go) and a few cool things like packages 
 
 G aims to...
 
-* Be easy to parse any analyze like Go.
-* Do anything C can do like tagged unions.
-* Be lean like C.
+* Be easy to parse and analyze like Go.
+* Do anything C can do (unions, unsafe things).
+* Be lean like C, should be suitable for microcontrollers.
 * Have perfect interop with C.
 * Have clear mapping to underlying machine code.
 * Have inline assembly support.
