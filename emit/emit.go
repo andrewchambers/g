@@ -8,14 +8,14 @@ import (
 )
 
 type emitter struct {
-	gscope   *scope
-	curscope *scope
-	symbolMap map[parse.Node] symbol
-	out      *bufio.Writer
+	gscope    *scope
+	curscope  *scope
+	symbolMap map[parse.Node]symbol
+	out       *bufio.Writer
 
-	llvmNameCounter uint
+	llvmNameCounter  uint
 	llvmLabelCounter uint
-	curFuncType     *GFunc
+	curFuncType      *GFunc
 }
 
 type Value interface {
@@ -82,37 +82,39 @@ func newEmitter(out *bufio.Writer) *emitter {
 	ret.curscope = newScope(nil)
 	ret.gscope = ret.curscope
 	ret.out = out
-	ret.symbolMap = make(map[parse.Node] symbol)
+	ret.symbolMap = make(map[parse.Node]symbol)
 	ret.addBuiltinTypes()
 	return ret
 }
 
 func (e *emitter) newLLVMLabel() string {
+	ret := fmt.Sprintf(".L%d", e.llvmLabelCounter)
 	e.llvmLabelCounter++
-	return fmt.Sprintf(".L%d", e.llvmLabelCounter)
+	return ret
 }
 
 func (e *emitter) newLLVMName() string {
+	ret := fmt.Sprintf("%%%d", e.llvmNameCounter)
 	e.llvmNameCounter++
-	return fmt.Sprintf("%%%d", e.llvmNameCounter)
+	return ret
 }
 
 func (e *emitter) addBuiltinTypes() {
 	// Built in types
-	e.curscope.declareType("bool",builtinBoolGType)
+	e.curscope.declareType("bool", builtinBoolGType)
 	e.curscope.declareType("int", builtinInt64GType)
 	e.curscope.declareType("int8", builtinInt8GType)
-	e.curscope.declareType("int16",builtinInt16GType)
-	e.curscope.declareType("int32",builtinInt32GType)
-	e.curscope.declareType("int64",builtinInt64GType)
+	e.curscope.declareType("int16", builtinInt16GType)
+	e.curscope.declareType("int32", builtinInt32GType)
+	e.curscope.declareType("int64", builtinInt64GType)
 	e.curscope.declareType("uint", builtinUInt64GType)
 	e.curscope.declareType("uint8", builtinUInt8GType)
-	e.curscope.declareType("uint16",builtinUInt16GType)
-	e.curscope.declareType("uint32",builtinUInt32GType)
-	e.curscope.declareType("uint64",builtinUInt64GType)
+	e.curscope.declareType("uint16", builtinUInt16GType)
+	e.curscope.declareType("uint32", builtinUInt32GType)
+	e.curscope.declareType("uint64", builtinUInt64GType)
 	// Built in symbols
-	e.curscope.declareSym("true", &constSymbol{&boolConstant{true},nil})
-	e.curscope.declareSym("false", &constSymbol{&boolConstant{true},nil})
+	e.curscope.declareSym("true", &constSymbol{&boolConstant{true}, nil})
+	e.curscope.declareSym("false", &constSymbol{&boolConstant{true}, nil})
 }
 
 func (e *emitter) pushScope() {
@@ -132,19 +134,19 @@ func (e *emitter) emiti(s string, args ...interface{}) {
 }
 
 func (e *emitter) emitrawi(s string) {
-	fmt.Fprint(e.out,"    " + s)
+	fmt.Fprint(e.out, "    "+s)
 }
 
 func (e *emitter) emitl(l string) {
-	e.emit("  %s:\n",l)
+	e.emit("  %s:\n", l)
 }
 
 func EmitModule(out *bufio.Writer, file *parse.File) error {
 	e := newEmitter(out)
 	err := e.collectGlobalSymbols(file)
-    if err != nil {
-	    return err
-    }
+	if err != nil {
+		return err
+	}
 	e.emit("; compiled from file %s\n", file.Span.Path)
 	e.emit("target triple = \"x86_64-pc-linux-gnu\"\n\n")
 	for _, fd := range file.FuncDecls {
@@ -158,117 +160,116 @@ func EmitModule(out *bufio.Writer, file *parse.File) error {
 }
 
 func (e *emitter) resolveSymbols(n parse.Node) error {
-        switch n := n.(type) {
-            case *parse.FuncDecl:
-                e.pushScope()
-                for _,subn := range n.Body {
-                    err := e.resolveSymbols(subn)
-                    if err != nil {
-                        return err
-                    }
-                }
-                e.popScope()
-            case *parse.VarDecl:
-                err := e.resolveLocalVarDecl(n)
-                if err != nil {
-                    return err
-                }
-            case *parse.Call:
-                
-                
-                err := e.resolveSymbols(n.FuncLike)
-                if err != nil {
-                    return err
-                }
-                for _,arg := range n.Args {
-                    err = e.resolveSymbols(arg)
-                    if err != nil {
-                        return err
-                    }
-                }
+	switch n := n.(type) {
+	case *parse.FuncDecl:
+		e.pushScope()
+		for _, subn := range n.Body {
+			err := e.resolveSymbols(subn)
+			if err != nil {
+				return err
+			}
+		}
+		e.popScope()
+	case *parse.VarDecl:
+		err := e.resolveLocalVarDecl(n)
+		if err != nil {
+			return err
+		}
+	case *parse.Call:
 
-            case *parse.Binop:
-                err := e.resolveSymbols(n.L)
-                if err != nil {
-                    return err
-                }
-                err = e.resolveSymbols(n.R)
-                if err != nil {
-                    return err
-                }
-            case *parse.Assign:
-                err := e.resolveSymbols(n.L)
-                if err != nil {
-                    return err
-                }
-                err = e.resolveSymbols(n.R)
-                if err != nil {
-                    return err
-                }
-            case *parse.If:
-                err := e.resolveSymbols(n.Cond)
-                if err != nil {
-                    return err
-                }
-                for _,subn := range n.Body {
-                    err := e.resolveSymbols(subn)
-                    if err != nil {
-                        return err
-                    }
-                }
-                for _,subn := range n.Els {
-                    err := e.resolveSymbols(subn)
-                    if err != nil {
-                        return err
-                    }
-                }
-            case *parse.For:
-                if n.Init != nil {
-                    err := e.resolveSymbols(n.Init)
-                    if err != nil {
-                        return err
-                    }
-                }
-                if n.Cond != nil {
-                    err := e.resolveSymbols(n.Cond)
-                    if err != nil {
-                        return err
-                    }
-                }
-                if n.Step != nil {
-                    err := e.resolveSymbols(n.Step)
-                    if err != nil {
-                        return err
-                    }
-                }
-                for _,subn := range n.Body {
-                    err := e.resolveSymbols(subn)
-                    if err != nil {
-                        return err
-                    }
-                }
-            case *parse.Return:
-                err := e.resolveSymbols(n.Expr)
-                if err != nil {
-                    return err
-                }
-            case *parse.Ident:
-                sym,err := e.curscope.lookupSym(n.Val)
-                if err != nil {
-                    return fmt.Errorf("%s at %s:%s",err,n.Span.Path,n.Span.Start)
-                }
-                e.symbolMap[n] = sym 
-        	case *parse.ExpressionStatement:
-                err := e.resolveSymbols(n.Expr)
-                if err != nil {
-                    return err
-                }
-        	case *parse.EmptyStatement,*parse.Constant:
-        	    //nothing
-            default:
-                panic(n) 
-        }
-        return nil
+		err := e.resolveSymbols(n.FuncLike)
+		if err != nil {
+			return err
+		}
+		for _, arg := range n.Args {
+			err = e.resolveSymbols(arg)
+			if err != nil {
+				return err
+			}
+		}
+
+	case *parse.Binop:
+		err := e.resolveSymbols(n.L)
+		if err != nil {
+			return err
+		}
+		err = e.resolveSymbols(n.R)
+		if err != nil {
+			return err
+		}
+	case *parse.Assign:
+		err := e.resolveSymbols(n.L)
+		if err != nil {
+			return err
+		}
+		err = e.resolveSymbols(n.R)
+		if err != nil {
+			return err
+		}
+	case *parse.If:
+		err := e.resolveSymbols(n.Cond)
+		if err != nil {
+			return err
+		}
+		for _, subn := range n.Body {
+			err := e.resolveSymbols(subn)
+			if err != nil {
+				return err
+			}
+		}
+		for _, subn := range n.Els {
+			err := e.resolveSymbols(subn)
+			if err != nil {
+				return err
+			}
+		}
+	case *parse.For:
+		if n.Init != nil {
+			err := e.resolveSymbols(n.Init)
+			if err != nil {
+				return err
+			}
+		}
+		if n.Cond != nil {
+			err := e.resolveSymbols(n.Cond)
+			if err != nil {
+				return err
+			}
+		}
+		if n.Step != nil {
+			err := e.resolveSymbols(n.Step)
+			if err != nil {
+				return err
+			}
+		}
+		for _, subn := range n.Body {
+			err := e.resolveSymbols(subn)
+			if err != nil {
+				return err
+			}
+		}
+	case *parse.Return:
+		err := e.resolveSymbols(n.Expr)
+		if err != nil {
+			return err
+		}
+	case *parse.Ident:
+		sym, err := e.curscope.lookupSym(n.Val)
+		if err != nil {
+			return fmt.Errorf("%s at %s:%s", err, n.Span.Path, n.Span.Start)
+		}
+		e.symbolMap[n] = sym
+	case *parse.ExpressionStatement:
+		err := e.resolveSymbols(n.Expr)
+		if err != nil {
+			return err
+		}
+	case *parse.EmptyStatement, *parse.Constant:
+		//nothing
+	default:
+		panic(n)
+	}
+	return nil
 }
 
 func (e *emitter) resolveLocalVarDecl(vd *parse.VarDecl) error {
@@ -302,11 +303,11 @@ func (e *emitter) collectGlobalSymbols(file *parse.File) error {
 		}
 	}
 	for _, fd := range file.FuncDecls {
-	    ty,err := e.funcDeclToGType(fd)
-	    if err != nil {
-	        return err
-	    }
-		sym := newGlobalFuncSymbol(ty,fd.Span.Start)
+		ty, err := e.funcDeclToGType(fd)
+		if err != nil {
+			return err
+		}
+		sym := newGlobalFuncSymbol(ty, fd.Span.Start)
 		err = e.curscope.declareSym(fd.Name, sym)
 		if err != nil {
 			return fmt.Errorf("bad func decl: %s %s:%v", err, fd.Span.Path, fd.Span.Start)
@@ -333,7 +334,7 @@ func (e *emitter) emitFuncDecl(f *parse.FuncDecl) error {
 	e.emitl(".entry")
 	err = e.resolveSymbols(f)
 	if err != nil {
-	    return err
+		return err
 	}
 	for _, stmt := range f.Body {
 		err = e.emitStatement(stmt)
@@ -361,7 +362,7 @@ func (e *emitter) emitStatement(stmt parse.Node) error {
 	case *parse.EmptyStatement:
 		err = nil
 	case *parse.ExpressionStatement:
-	    _,err = e.emitExpression(stmt.Expr)
+		_, err = e.emitExpression(stmt.Expr)
 	default:
 		panic(stmt)
 	}
@@ -369,110 +370,110 @@ func (e *emitter) emitStatement(stmt parse.Node) error {
 }
 
 func (e *emitter) emitLocalVarDecl(vd *parse.VarDecl) error {
-    return nil
+	return nil
 }
 
 func (e *emitter) emitIf(i *parse.If) error {
-    v,err := e.emitExpression(i.Cond)
-    if err != nil {
-        return err
-    }
-    if !isBool(v.getGType()) {
-        return fmt.Errorf("If statements require a bool expression %s:%s",i.Span.Path,i.Span.Start)
-    }
-    if v.isLVal() {
-        v,err = e.emitRemoveLValness(v)
-        if err != nil {
-            return err
-        }
-    }
-    if isConstantVal(v) {
-        v,err = e.emitRemoveConstant(v,builtinBoolGType)
-        if err != nil {
-            return err
-        }
-    }
-    iftrue := e.newLLVMLabel()
-    iffalse := e.newLLVMLabel()
-    after := e.newLLVMLabel()
-    
-    e.emiti("br i1 %s, label %s, label %s\n",v.getLLVMRepr(),iftrue,iffalse)
-    e.emitl(iftrue)
-    for _, stmt := range i.Body {
-        e.emitStatement(stmt)
-    }
-    e.emiti("br label %s\n",after)
-    e.emitl(iffalse)
-    for _, stmt := range i.Els {
-        e.emitStatement(stmt)
-    }
-    e.emiti("br label %s\n",after)
-    e.emitl(after)
-    return nil
-}
-
-func (e *emitter) emitFor(f *parse.For) error {
-    if f.Init != nil {
-        err := e.emitStatement(f.Init)
-        if err != nil {
-            return err
-        }
-    }
-    
-    loopbegin := e.newLLVMLabel()
-    loopbody := e.newLLVMLabel()
-    loopexit := e.newLLVMLabel()
-    
-    e.emitl(loopbegin)
-    
-    if f.Cond != nil {
-        v,err := e.emitExpression(f.Cond)
-        if err != nil {
-            return err
-        }
-        if !isBool(v.getGType()) {
-            return fmt.Errorf("For loop condition requires a bool expression %s:%s",f.Cond.GetSpan().Path,f.Cond.GetSpan().Start)
-        }
-        if v.isLVal() {
-            v,err = e.emitRemoveLValness(v)
-            if err != nil {
-                return err
-            }
-        }
-        if isConstantVal(v) {
-            v,err = e.emitRemoveConstant(v,builtinBoolGType)
-            if err != nil {
-                return err
-            }
-        }
-        e.emiti("br i1 %s, label %s, label %s\n",v.getLLVMRepr(),loopbody,loopexit)
-    }
-    e.emitl(loopbody)
-    for _, stmt := range f.Body {
-        err := e.emitStatement(stmt)
-        if err != nil {
-            return err
-        }
-    }
-    if f.Step != nil {
-        err := e.emitStatement(f.Step)
-        if err != nil {
-            return err
-        }   
-    }
-    e.emiti("br label %s\n",loopbegin)
-    e.emitl(loopexit)
-    return nil
-}
-
-
-func (e *emitter) emitAssign(ass *parse.Assign) error {
-	
-	l,err := e.emitExpression(ass.L)
+	v, err := e.emitExpression(i.Cond)
 	if err != nil {
 		return err
 	}
-	r,err := e.emitExpression(ass.R)
+	if !isBool(v.getGType()) {
+		return fmt.Errorf("If statements require a bool expression %s:%s", i.Span.Path, i.Span.Start)
+	}
+	if v.isLVal() {
+		v, err = e.emitRemoveLValness(v)
+		if err != nil {
+			return err
+		}
+	}
+	if isConstantVal(v) {
+		v, err = e.emitRemoveConstant(v, builtinBoolGType)
+		if err != nil {
+			return err
+		}
+	}
+	iftrue := e.newLLVMLabel()
+	iffalse := e.newLLVMLabel()
+	after := e.newLLVMLabel()
+
+	e.emiti("br i1 %s, label %%%s, label %%%s\n", v.getLLVMRepr(), iftrue, iffalse)
+	e.emitl(iftrue)
+	for _, stmt := range i.Body {
+		e.emitStatement(stmt)
+	}
+	e.emiti("br label %%%s\n", after)
+	e.emitl(iffalse)
+	for _, stmt := range i.Els {
+		e.emitStatement(stmt)
+	}
+	e.emiti("br label %%%s\n", after)
+	e.emitl(after)
+	return nil
+}
+
+func (e *emitter) emitFor(f *parse.For) error {
+	if f.Init != nil {
+		err := e.emitStatement(f.Init)
+		if err != nil {
+			return err
+		}
+	}
+
+	loopbegin := e.newLLVMLabel()
+	loopbody := e.newLLVMLabel()
+	loopexit := e.newLLVMLabel()
+
+	e.emiti("br label %%%s\n", loopbegin)
+	e.emitl(loopbegin)
+
+	if f.Cond != nil {
+		v, err := e.emitExpression(f.Cond)
+		if err != nil {
+			return err
+		}
+		if !isBool(v.getGType()) {
+			return fmt.Errorf("For loop condition requires a bool expression %s:%s", f.Cond.GetSpan().Path, f.Cond.GetSpan().Start)
+		}
+		if v.isLVal() {
+			v, err = e.emitRemoveLValness(v)
+			if err != nil {
+				return err
+			}
+		}
+		if isConstantVal(v) {
+			v, err = e.emitRemoveConstant(v, builtinBoolGType)
+			if err != nil {
+				return err
+			}
+		}
+		e.emiti("br i1 %s, label %%%s, label %%%s\n", v.getLLVMRepr(), loopbody, loopexit)
+	}
+	e.emitl(loopbody)
+	for _, stmt := range f.Body {
+		err := e.emitStatement(stmt)
+		if err != nil {
+			return err
+		}
+	}
+	if f.Step != nil {
+		err := e.emitStatement(f.Step)
+		if err != nil {
+			return err
+		}
+	}
+	e.emiti("br label %%%s\n", loopbegin)
+	e.emitl(loopexit)
+	return nil
+}
+
+func (e *emitter) emitAssign(ass *parse.Assign) error {
+
+	l, err := e.emitExpression(ass.L)
+	if err != nil {
+		return err
+	}
+	r, err := e.emitExpression(ass.R)
 	if err != nil {
 		return err
 	}
@@ -518,7 +519,7 @@ func (e *emitter) emitStore(llvmptr string, v Value) error {
 }
 
 func (e *emitter) emitReturn(r *parse.Return) error {
-	v,err := e.emitExpression(r.Expr)
+	v, err := e.emitExpression(r.Expr)
 	if err != nil {
 		return err
 	}
@@ -608,7 +609,7 @@ func (e *emitter) emitRemoveConstant(v Value, hint GType) (Value, error) {
 		default:
 			return nil, fmt.Errorf("unable to convert numeric constant to XXX")
 		}
-    case *boolConstant:
+	case *boolConstant:
 		switch hint := hint.(type) {
 		case *GInt:
 			if !isBool(hint) {
@@ -616,7 +617,7 @@ func (e *emitter) emitRemoveConstant(v Value, hint GType) (Value, error) {
 			}
 			val := 0
 			if v.val {
-			    val = 1
+				val = 1
 			}
 			ret := &exprValue{
 				llvmName: fmt.Sprintf("%d", val),
@@ -632,11 +633,11 @@ func (e *emitter) emitRemoveConstant(v Value, hint GType) (Value, error) {
 	}
 }
 
-func (e *emitter) emitExpression(expr parse.Node) (Value,error) {
+func (e *emitter) emitExpression(expr parse.Node) (Value, error) {
 	switch expr := expr.(type) {
 	case *parse.Constant:
 		v := &intConstant{expr.Val}
-		return v,nil
+		return v, nil
 	case *parse.Call:
 		return e.emitCall(expr)
 	case *parse.Binop:
@@ -648,93 +649,93 @@ func (e *emitter) emitExpression(expr parse.Node) (Value,error) {
 	}
 }
 
-func (e *emitter) emitCall(c *parse.Call) (Value,error) {
-    
-    var funcType *GFunc
-    isGlobalCall := false
-    funcName := ""
-    
-    sym,ok := e.symbolMap[c.FuncLike]
-    if ok {
-        fsym,ok := sym.(*globalFuncSymbol)
-        if ok {
-            funcType = fsym.gType
-            ident,ok := c.FuncLike.(*parse.Ident)
-            if !ok {
-                panic("internal error - non ident in symbol map!")
-            }
-            funcName = ident.Val
-            isGlobalCall = true
-        }
-    } else {
-        panic("unimplemented...")        
-    }
-    if len(c.Args) != len(funcType.ArgTypes) {
-        return nil, fmt.Errorf("expected %d argument(s), got %d",len(funcType.ArgTypes),len(c.Args))
-    }
-    
-    argvalues := make([]Value,len(c.Args))
-    for idx, argNode := range c.Args {
-        arg,err := e.emitExpression(argNode)
-        if err != nil {
-            return nil,err
-        }
-    	if isConstantVal(arg) {
-		    arg, err = e.emitRemoveConstant(arg, funcType.ArgTypes[idx])
-		    if err != nil {
-			    return nil,err
-		    }
-	    }
-	    if arg.isLVal() {
-		    arg, err = e.emitRemoveLValness(arg)
-		    if err != nil {
-			    return nil,err
-		    }
-	    }
-	    if !funcType.ArgTypes[idx].Equals(arg.getGType()) {
-	        return nil,fmt.Errorf("incorrect arg type.")
-	    }
-        argvalues[idx] = arg
-    }
-    
-    funcret := e.newLLVMName()
-    if isGlobalCall {
-        callinst := fmt.Sprintf("%s = call %s @%s (",funcret, gTypeToLLVM(funcType.RetType),funcName)
-        for i,v := range argvalues {
-            callinst += fmt.Sprintf("%s %s",gTypeToLLVM(v.getGType()),v.getLLVMRepr())
-            if i != len(argvalues) -1 {
-                callinst += ", "
-            }
-        }
-        callinst += ")\n"
-        e.emitrawi(callinst)
-        ret := &exprValue {
-            gType: funcType.RetType,
-            lval: false,
-        }
-        return ret,nil
-    } else {
-        panic("unimplemented")
-    }
-    
-    panic("unreachable")
+func (e *emitter) emitCall(c *parse.Call) (Value, error) {
+
+	var funcType *GFunc
+	isGlobalCall := false
+	funcName := ""
+
+	sym, ok := e.symbolMap[c.FuncLike]
+	if ok {
+		fsym, ok := sym.(*globalFuncSymbol)
+		if ok {
+			funcType = fsym.gType
+			ident, ok := c.FuncLike.(*parse.Ident)
+			if !ok {
+				panic("internal error - non ident in symbol map!")
+			}
+			funcName = ident.Val
+			isGlobalCall = true
+		}
+	} else {
+		panic("unimplemented...")
+	}
+	if len(c.Args) != len(funcType.ArgTypes) {
+		return nil, fmt.Errorf("expected %d argument(s), got %d", len(funcType.ArgTypes), len(c.Args))
+	}
+
+	argvalues := make([]Value, len(c.Args))
+	for idx, argNode := range c.Args {
+		arg, err := e.emitExpression(argNode)
+		if err != nil {
+			return nil, err
+		}
+		if isConstantVal(arg) {
+			arg, err = e.emitRemoveConstant(arg, funcType.ArgTypes[idx])
+			if err != nil {
+				return nil, err
+			}
+		}
+		if arg.isLVal() {
+			arg, err = e.emitRemoveLValness(arg)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if !funcType.ArgTypes[idx].Equals(arg.getGType()) {
+			return nil, fmt.Errorf("incorrect arg type.")
+		}
+		argvalues[idx] = arg
+	}
+
+	funcret := e.newLLVMName()
+	if isGlobalCall {
+		callinst := fmt.Sprintf("%s = call %s @%s (", funcret, gTypeToLLVM(funcType.RetType), funcName)
+		for i, v := range argvalues {
+			callinst += fmt.Sprintf("%s %s", gTypeToLLVM(v.getGType()), v.getLLVMRepr())
+			if i != len(argvalues)-1 {
+				callinst += ", "
+			}
+		}
+		callinst += ")\n"
+		e.emitrawi(callinst)
+		ret := &exprValue{
+			gType: funcType.RetType,
+			lval:  false,
+		}
+		return ret, nil
+	} else {
+		panic("unimplemented")
+	}
+
+	panic("unreachable")
 }
 
-func (e *emitter) emitIdent(i *parse.Ident) (Value,error) {
+func (e *emitter) emitIdent(i *parse.Ident) (Value, error) {
 	s, ok := e.symbolMap[i]
 	if !ok {
 		panic("internal error")
 	}
 	switch s := s.(type) {
 	case *localSymbol:
-	    ret :=  &exprValue{
-			        llvmName: s.alloca,
-			        lval:     true,
-			        gType:    s.getGType(),
-		        }   
-		return ret,nil
-    case *constSymbol:
-        return s.v,nil
+		ret := &exprValue{
+			llvmName: s.alloca,
+			lval:     true,
+			gType:    s.getGType(),
+		}
+		return ret, nil
+	case *constSymbol:
+		return s.v, nil
 	default:
 		panic("unhandled...")
 	}
@@ -757,49 +758,49 @@ func isIntType(t GType) bool {
 	return ok
 }
 
-func (e *emitter) emitBinop(b *parse.Binop) (Value,error) {
-	l,err := e.emitExpression(b.L)
+func (e *emitter) emitBinop(b *parse.Binop) (Value, error) {
+	l, err := e.emitExpression(b.L)
 	if err != nil {
-	    return nil,err
+		return nil, err
 	}
-	r,err := e.emitExpression(b.R)
+	r, err := e.emitExpression(b.R)
 	if err != nil {
-	    return nil,err
+		return nil, err
 	}
 
 	if isConstantVal(l) && isConstantVal(r) {
 		c, err := foldConstantBinop(b.Op, l, r)
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
-		return c,nil
+		return c, nil
 	}
 
 	if isConstantVal(l) {
 		l, err = e.emitRemoveConstant(l, r.getGType())
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
 	}
 
 	if isConstantVal(r) {
 		r, err = e.emitRemoveConstant(r, l.getGType())
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
 	}
 
 	if l.isLVal() {
 		l, err = e.emitRemoveLValness(l)
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
 	}
 
 	if r.isLVal() {
 		r, err = e.emitRemoveLValness(r)
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
 	}
 
@@ -811,34 +812,39 @@ func (e *emitter) emitBinop(b *parse.Binop) (Value,error) {
 		panic("arithmetic on non int type")
 	}
 
-
 	if isBool(l.getGType()) {
 		switch b.Op {
 		case parse.EQ:
 		default:
-			return nil,fmt.Errorf("binop %s cannot be performed on type bool", b.Op)
+			return nil, fmt.Errorf("binop %s cannot be performed on type bool", b.Op)
 		}
 	}
-    
-    llty := gTypeToLLVM(l.getGType())
-    
+
+	llty := gTypeToLLVM(l.getGType())
+
 	switch b.Op {
 	case parse.EQ:
 		ret := &exprValue{
-		    llvmName: e.newLLVMName(),
-		    gType:    builtinBoolGType,
-		    lval:     false,
-	    }
+			llvmName: e.newLLVMName(),
+			gType:    builtinBoolGType,
+			lval:     false,
+		}
 		e.emiti("%s = icmp eq %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
-		return ret,nil
-	}    
+	case '<':
+		ret := &exprValue{
+			llvmName: e.newLLVMName(),
+			gType:    builtinBoolGType,
+			lval:     false,
+		}
+		e.emiti("%s = icmp slt %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
+		return ret, nil
+	}
 
 	ret := &exprValue{
 		llvmName: e.newLLVMName(),
 		gType:    l.getGType(),
 		lval:     false,
 	}
-
 
 	switch b.Op {
 	case '+':
@@ -854,9 +860,9 @@ func (e *emitter) emitBinop(b *parse.Binop) (Value,error) {
 	case '^':
 		e.emiti("%s = xor %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
 	default:
-		panic("unreachable")
+		panic(b.Op)
 	}
-	return ret,nil
+	return ret, nil
 }
 
 func (e *emitter) funcDeclToGType(f *parse.FuncDecl) (*GFunc, error) {
