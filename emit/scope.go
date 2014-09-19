@@ -52,7 +52,7 @@ func newGlobalSymbol(p parse.FilePos) symbol {
 	return ret
 }
 
-func newGlobalFuncSymbol(ty *GFunc,p parse.FilePos) symbol {
+func newGlobalFuncSymbol(ty *GFunc, p parse.FilePos) symbol {
 	ret := &globalFuncSymbol{}
 	ret.defPos = p
 	ret.gType = ty
@@ -74,7 +74,6 @@ func (f *globalFuncSymbol) getGType() GType {
 func (f *globalFuncSymbol) getDefPos() parse.FilePos {
 	return f.defPos
 }
-
 
 func (g *constSymbol) getGType() GType {
 	return &GConstant{}
