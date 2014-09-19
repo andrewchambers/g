@@ -366,7 +366,7 @@ func (e *emitter) emitFuncDecl(f *parse.FuncDecl) error {
 			return err
 		}
 	}
-	e.emit("}\n")
+	e.emit("}\n\n")
 	return nil
 }
 
@@ -747,8 +747,9 @@ func (e *emitter) emitCall(c *parse.Call) (Value, error) {
 		callinst += ")\n"
 		e.emitrawi(callinst)
 		ret := &exprValue{
-			gType: funcType.RetType,
-			lval:  false,
+			llvmName: funcret,
+			gType:    funcType.RetType,
+			lval:     false,
 		}
 		return ret, nil
 	} else {
