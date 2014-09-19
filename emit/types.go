@@ -18,6 +18,9 @@ type GInt struct {
 	Signed bool
 }
 
+type GVoid struct {
+}
+
 type GPointer struct {
 	PointsTo GType
 }
@@ -35,6 +38,7 @@ type GArray struct {
 	ArrayOf GType
 }
 
+var builtinVoidGType GType = &GVoid{}
 var builtinBoolGType GType = &GInt{"bool", 1, false}
 var builtinInt8GType GType = &GInt{"int8", 8, true}
 var builtinInt16GType GType = &GInt{"int16", 16, true}
@@ -72,6 +76,15 @@ func (*GConstant) Equals(other GType) bool {
 
 func (c *GConstant) String() string {
 	return "constant"
+}
+
+func (*GVoid) Equals(other GType) bool {
+	_, ok := other.(*GVoid)
+	return ok
+}
+
+func (c *GVoid) String() string {
+	return "void"
 }
 
 func (i *GInt) Equals(other GType) bool {

@@ -160,6 +160,8 @@ func EmitModule(out *bufio.Writer, file *parse.File) error {
 	e.emit("; compiled from file %s\n", file.Span.Path)
 	e.emit("target triple = \"x86_64-pc-linux-gnu\"\n\n")
 	for _, fd := range file.FuncDecls {
+		e.llvmLabelCounter = 0
+		e.llvmNameCounter = 0
 		err = e.emitFuncDecl(fd)
 		if err != nil {
 			return err
@@ -173,12 +175,18 @@ func (e *emitter) resolveSymbols(n parse.Node) error {
 	switch n := n.(type) {
 	case *parse.FuncDecl:
 		e.pushScope()
+		err := e.handleFuncPrologue(n)
+		if err != nil {
+			return err
+		}
+		e.pushScope()
 		for _, subn := range n.Body {
 			err := e.resolveSymbols(subn)
 			if err != nil {
 				return err
 			}
 		}
+		e.popScope()
 		e.popScope()
 	case *parse.VarDecl:
 		err := e.resolveLocalVarDecl(n)
@@ -267,9 +275,11 @@ func (e *emitter) resolveSymbols(n parse.Node) error {
 			}
 		}
 	case *parse.Return:
-		err := e.resolveSymbols(n.Expr)
-		if err != nil {
-			return err
+		if n.Expr != nil {
+			err := e.resolveSymbols(n.Expr)
+			if err != nil {
+				return err
+			}
 		}
 	case *parse.Ident:
 		sym, err := e.curscope.lookupSym(n.Val)
@@ -286,6 +296,29 @@ func (e *emitter) resolveSymbols(n parse.Node) error {
 		//nothing
 	default:
 		panic(n)
+	}
+	return nil
+}
+
+func (e *emitter) handleFuncPrologue(fd *parse.FuncDecl) error {
+	for idx, arg := range fd.ArgNames {
+		ty := fd.ArgTypes[idx]
+		gty, err := e.parseNodeToGType(ty)
+		if err != nil {
+			return err
+		}
+		llname := e.newLLVMName()
+		v := &exprValue{}
+		v.gType = gty
+		v.llvmName = "%" + arg
+		e.emiti("%s = alloca %s\n", llname, gTypeToLLVM(gty))
+		e.emitStore(llname, v)
+		s := &localSymbol{
+			alloca: llname,
+			gType:  gty,
+			defPos: fd.Span.Start,
+		}
+		e.curscope.declareSym(arg, s)
 	}
 	return nil
 }
@@ -354,7 +387,22 @@ func (e *emitter) emitFuncDecl(f *parse.FuncDecl) error {
 		return err
 	}
 	e.curFuncType = ft
-	e.emit("define %s @%s() {\n", gTypeToLLVM(ft.RetType), f.Name)
+	args := ""
+	for idx, argname := range f.ArgNames {
+		ty := f.ArgTypes[idx]
+		gty, err := e.parseNodeToGType(ty)
+		if err != nil {
+			return err
+		}
+		args += fmt.Sprintf("%s %%%s", gTypeToLLVM(gty), argname)
+		if idx != len(f.ArgNames)-1 {
+			args += ","
+		}
+	}
+	llvmRetTy := ""
+	rty := ft.RetType
+	llvmRetTy = gTypeToLLVM(rty)
+	e.emit("define %s @%s( %s ) {\n", llvmRetTy, f.Name, args)
 	e.emitl(".entry")
 	err = e.resolveSymbols(f)
 	if err != nil {
@@ -529,8 +577,7 @@ func (e *emitter) emitAssign(ass *parse.Assign) error {
 	if !l.getGType().Equals(r.getGType()) {
 		panic("assignment of incompatible types")
 	}
-	lstr := fmt.Sprintf("%s* %s", gTypeToLLVM(l.getGType()), l.getLLVMRepr())
-	err = e.emitStore(lstr, r)
+	err = e.emitStore(l.getLLVMRepr(), r)
 	if err != nil {
 		return err
 	}
@@ -541,10 +588,10 @@ func (e *emitter) emitStore(llvmptr string, v Value) error {
 	t := v.getGType()
 	switch t.(type) {
 	case *GPointer:
-		e.emiti("store %s %s, %s\n", gTypeToLLVM(t), v.getLLVMRepr(), llvmptr)
+		e.emiti("store %s %s, %s* %s\n", gTypeToLLVM(t), v.getLLVMRepr(), gTypeToLLVM(t), llvmptr)
 		return nil
 	case *GInt:
-		e.emiti("store %s %s, %s\n", gTypeToLLVM(t), v.getLLVMRepr(), llvmptr)
+		e.emiti("store %s %s, %s* %s\n", gTypeToLLVM(t), v.getLLVMRepr(), gTypeToLLVM(t), llvmptr)
 		return nil
 	default:
 		return fmt.Errorf("dont know how to store type")
@@ -552,6 +599,15 @@ func (e *emitter) emitStore(llvmptr string, v Value) error {
 }
 
 func (e *emitter) emitReturn(r *parse.Return) error {
+
+	if r.Expr == nil {
+		if !e.curFuncType.RetType.Equals(builtinVoidGType) {
+			return fmt.Errorf("function expects empty return")
+		}
+		e.emiti("ret void\n")
+		return nil
+	}
+
 	v, err := e.emitExpression(r.Expr)
 	if err != nil {
 		return err
@@ -734,10 +790,15 @@ func (e *emitter) emitCall(c *parse.Call) (Value, error) {
 		}
 		argvalues[idx] = arg
 	}
-
-	funcret := e.newLLVMName()
+	funcret := ""
 	if isGlobalCall {
-		callinst := fmt.Sprintf("%s = call %s @%s (", funcret, gTypeToLLVM(funcType.RetType), funcName)
+		callinst := ""
+		if funcType.RetType.Equals(builtinVoidGType) {
+			callinst = fmt.Sprintf("call void @%s (", funcName)
+		} else {
+			funcret = e.newLLVMName()
+			callinst = fmt.Sprintf("%s = call %s @%s (", funcret, gTypeToLLVM(funcType.RetType), funcName)
+		}
 		for i, v := range argvalues {
 			callinst += fmt.Sprintf("%s %s", gTypeToLLVM(v.getGType()), v.getLLVMRepr())
 			if i != len(argvalues)-1 {
@@ -746,11 +807,21 @@ func (e *emitter) emitCall(c *parse.Call) (Value, error) {
 		}
 		callinst += ")\n"
 		e.emitrawi(callinst)
-		ret := &exprValue{
-			llvmName: funcret,
-			gType:    funcType.RetType,
-			lval:     false,
+		var ret Value
+		if funcType.RetType.Equals(builtinVoidGType) {
+			ret = &exprValue{
+				llvmName: "void",
+				gType:    builtinVoidGType,
+				lval:     false,
+			}
+		} else {
+			ret = &exprValue{
+				llvmName: funcret,
+				gType:    funcType.RetType,
+				lval:     false,
+			}
 		}
+
 		return ret, nil
 	} else {
 		panic("unimplemented")
@@ -960,6 +1031,8 @@ func (e *emitter) funcDeclToGType(f *parse.FuncDecl) (*GFunc, error) {
 			return nil, err
 		}
 		ret.RetType = t
+	} else {
+		ret.RetType = builtinVoidGType
 	}
 
 	return ret, nil
@@ -979,7 +1052,8 @@ func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
 		ret := &GPointer{PointsTo: t}
 		return ret, nil
 	default:
-		return nil, fmt.Errorf("invalid type")
+		panic(n)
+		return nil, fmt.Errorf("invalid type %v", n)
 	}
 
 	panic("unreachable")
@@ -987,6 +1061,8 @@ func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
 
 func gTypeToLLVM(t GType) string {
 	switch t := t.(type) {
+	case *GVoid:
+		return "void"
 	case *GPointer:
 		return fmt.Sprintf("%s*", gTypeToLLVM(t.PointsTo))
 	case *GInt:
@@ -1005,6 +1081,6 @@ func gTypeToLLVM(t GType) string {
 			panic("unreachable.")
 		}
 	default:
-		panic("unreachable: bad gtype " + fmt.Sprintf("%s", t))
+		panic("unreachable: bad gtype " + fmt.Sprintf("%v", t))
 	}
 }

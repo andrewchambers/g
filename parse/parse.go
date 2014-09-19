@@ -223,6 +223,11 @@ func (p *parser) parseStatement() Node {
 		r := &Return{}
 		r.Span = p.curTok.Span
 		p.next()
+		if p.curTok.Kind == ';' {
+			p.next()
+			r.Expr = nil
+			return r
+		}
 		r.Expr = p.parseExpression()
 		r.Span.End = p.curTok.Span.End
 		p.expect(';')
