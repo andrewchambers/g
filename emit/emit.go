@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/andrewchambers/g/parse"
+	"runtime"
 	"strings"
 )
 
@@ -158,7 +159,17 @@ func EmitModule(out *bufio.Writer, file *parse.File) error {
 		return err
 	}
 	e.emit("; compiled from file %s\n", file.Span.Path)
-	e.emit("target triple = \"x86_64-pc-linux-gnu\"\n\n")
+	//XXX hack to make it work on my laptop.
+	//Fix and support cross compiling
+	switch runtime.GOOS {
+	case "linux":
+		e.emit("target triple = \"x86_64-pc-linux-gnu\"\n\n")
+	case "windows":
+		e.emit("target triple = \"i686-pc-mingw32\"\n\n")
+	default:
+		return fmt.Errorf("unknown platform %s", runtime.GOOS)
+	}
+
 	for _, fd := range file.FuncDecls {
 		e.llvmLabelCounter = 0
 		e.llvmNameCounter = 0
