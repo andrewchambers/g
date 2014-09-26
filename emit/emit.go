@@ -557,7 +557,8 @@ func (e *emitter) emitFor(f *parse.For) error {
 }
 
 func (e *emitter) emitAssign(ass *parse.Assign) error {
-
+    
+    
 	l, err := e.emitExpression(ass.L)
 	if err != nil {
 		return err
@@ -570,6 +571,28 @@ func (e *emitter) emitAssign(ass *parse.Assign) error {
 	if !l.isLVal() {
 		return fmt.Errorf("assigning to a non lvalue")
 	}
+	
+    switch ass.Op {
+        case parse.ADDASSIGN:
+            r,err = e.emitBinop2('+',l,r)
+            if err != nil {
+                return err
+            }
+        case parse.SUBASSIGN:
+            r,err = e.emitBinop2('-',l,r)
+            if err != nil {
+                return err
+            }
+        case parse.MULASSIGN:
+            r,err = e.emitBinop2('*',l,r)
+            if err != nil {
+                return err
+            }
+        case '=':
+            //pass
+        default:
+            panic(ass.Op)
+    }
 
 	if isConstantVal(r) {
 		r, err = e.emitRemoveConstant(r, l.getGType())
@@ -878,18 +901,12 @@ func isIntType(t GType) bool {
 	return ok
 }
 
-func (e *emitter) emitBinop(b *parse.Binop) (Value, error) {
-	l, err := e.emitExpression(b.L)
-	if err != nil {
-		return nil, err
-	}
-	r, err := e.emitExpression(b.R)
-	if err != nil {
-		return nil, err
-	}
-
+func (e *emitter) emitBinop2(op parse.TokenKind, l,r Value) (Value, error) {
+    
+    var err error
+    
 	if isConstantVal(l) && isConstantVal(r) {
-		c, err := foldConstantBinop(b.Op, l, r)
+		c, err := foldConstantBinop(op, l, r)
 		if err != nil {
 			return nil, err
 		}
@@ -933,17 +950,17 @@ func (e *emitter) emitBinop(b *parse.Binop) (Value, error) {
 	}
 
 	if isBool(l.getGType()) {
-		switch b.Op {
+		switch op {
 		case parse.EQ:
 		default:
-			return nil, fmt.Errorf("binop %s cannot be performed on type bool", b.Op)
+			return nil, fmt.Errorf("binop %s cannot be performed on type bool", op)
 		}
 	}
 
 	llty := gTypeToLLVM(l.getGType())
 
 	//XXX refactor this into less code
-	switch b.Op {
+	switch op {
 	case parse.EQ:
 		ret := &exprValue{
 			llvmName: e.newLLVMName(),
@@ -968,7 +985,7 @@ func (e *emitter) emitBinop(b *parse.Binop) (Value, error) {
 		lval:     false,
 	}
 
-	switch b.Op {
+	switch op {
 	case '+':
 		e.emiti("%s = add %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
 	case '-':
@@ -982,9 +999,22 @@ func (e *emitter) emitBinop(b *parse.Binop) (Value, error) {
 	case '^':
 		e.emiti("%s = xor %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
 	default:
-		panic(b.Op)
+		panic(op)
 	}
 	return ret, nil
+}
+
+func (e *emitter) emitBinop(b *parse.Binop) (Value, error) {
+    l, err := e.emitExpression(b.L)
+	if err != nil {
+		return nil, err
+	}
+	r, err := e.emitExpression(b.R)
+	if err != nil {
+		return nil, err
+	}
+	v,err := e.emitBinop2(b.Op,l,r)
+	return v,err
 }
 
 func (e *emitter) emitUnop(u *parse.Unop) (Value, error) {
