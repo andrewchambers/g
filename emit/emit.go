@@ -986,6 +986,10 @@ func (e *emitter) emitBinop2(op parse.TokenKind, l,r Value) (Value, error) {
 	}
 
 	switch op {
+	case parse.RSHIFT:
+	    e.emiti("%s = shr %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
+	case parse.LSHIFT:
+	    e.emiti("%s = shl %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
 	case '+':
 		e.emiti("%s = add %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
 	case '-':
@@ -1024,7 +1028,8 @@ func (e *emitter) emitUnop(u *parse.Unop) (Value, error) {
 	}
 
 	if isConstantVal(v) {
-		return nil, fmt.Errorf("cannot perform unary op %s on constant", u.Op)
+	    v,err = foldConstantUnop(u.Op,v)
+	    return v,err
 	}
 
 	switch u.Op {

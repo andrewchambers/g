@@ -470,7 +470,7 @@ func tokToInt64(t *Token) (int64, error) {
 
 func (p *parser) parsePrimaryExpression() Node {
 
-	if p.curTok.Kind == '&' || p.curTok.Kind == '*' {
+	if p.curTok.Kind == '&'  || p.curTok.Kind == '*' || p.curTok.Kind == '-' {
 		newu := &Unop{}
 		newu.Op = p.curTok.Kind
 		newu.Span = p.curTok.Span
