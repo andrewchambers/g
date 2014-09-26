@@ -168,7 +168,17 @@ func (p *parser) parseFuncDecl() *FuncDecl {
 }
 
 func (p *parser) parseType(allowEmpty bool) Node {
+	
+	
 	switch p.curTok.Kind {
+	case '[':
+	    ret := &ArrayOf{}
+        p.expect('[')
+        p.expect(CONSTANT)
+        p.expect(']')
+        t := p.parseType(false)
+        ret.SubType =t 
+        return ret
 	case STRUCT:
 		return p.parseStruct()
 	case IDENTIFIER:

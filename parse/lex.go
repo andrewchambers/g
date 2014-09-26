@@ -136,6 +136,10 @@ func (l *lexer) lex() {
 				l.sendTok('(', "(")
 			case ')':
 				l.sendTok(')', ")")
+			case '[':
+				l.sendTok('[', "[")
+			case ']':
+				l.sendTok(']', "]")
 			case ';':
 				l.sendTok(';', ";")
 			case ',':

@@ -690,7 +690,12 @@ func (e *emitter) emitZeroMem(name string, t GType) error {
 			panic("internal error")
 		}
 	default:
-		return fmt.Errorf("unable to zero memory for type %s", t)
+	    szx := e.newLLVMName()
+	    sz := e.newLLVMName()
+	    llty := gTypeToLLVM(t)
+	    e.emiti("%s = getelementptr %s* null, i32 1\n",sz,llty)
+	    e.emiti("%s = cast %s* %s to i64\n",sz,llty,szx)
+	    e.emiti("call void @memset(%s, i8 0, i64 %s)\n",name,sz)
 	}
 	return nil
 }
@@ -1097,6 +1102,15 @@ func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
 		}
 		ret := &GPointer{PointsTo: t}
 		return ret, nil
+	case *parse.ArrayOf:
+		t, err := e.parseNodeToGType(n.SubType)
+		if err != nil {
+			return nil, err
+		}
+		ret := &GArray{}
+		ret.Dim = 12
+		ret.SubType = t
+		return ret, nil
 	default:
 		panic(n)
 		return nil, fmt.Errorf("invalid type %v", n)
@@ -1111,6 +1125,8 @@ func gTypeToLLVM(t GType) string {
 		return "void"
 	case *GPointer:
 		return fmt.Sprintf("%s*", gTypeToLLVM(t.PointsTo))
+    case *GArray:
+		return fmt.Sprintf("<%d * %s>", t.Dim,gTypeToLLVM(t.SubType))
 	case *GInt:
 		switch t.Bits {
 		case 64:

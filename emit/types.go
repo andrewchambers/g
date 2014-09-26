@@ -25,17 +25,17 @@ type GPointer struct {
 	PointsTo GType
 }
 
+type GArray struct {
+    Dim uint
+	SubType GType
+}
+
 type GFunc struct {
 	RetType  GType
 	ArgTypes []GType
 }
 
 type GConstant struct {
-}
-
-type GArray struct {
-	Dim     int64
-	ArrayOf GType
 }
 
 var builtinVoidGType GType = &GVoid{}
@@ -56,6 +56,19 @@ func isBool(t GType) bool {
 	}
 	return false
 }
+
+func (a *GArray) Equals(other GType) bool {
+	o, ok := other.(*GArray)
+	if !ok {
+		return false
+	}
+	return a.Dim == o.Dim && o.SubType.Equals(a.SubType)
+}
+
+func (a *GArray) String() string {
+	return fmt.Sprintf("[%d]%s",a.Dim,a.SubType.String())
+}
+
 
 func (p *GPointer) Equals(other GType) bool {
 	o, ok := other.(*GPointer)

@@ -61,6 +61,12 @@ type PointerTo struct {
 	PointsTo Node
 }
 
+type ArrayOf struct {
+	SpanProvider
+	Dim uint
+	SubType Node
+}
+
 type Struct struct {
 	SpanProvider
 	names []string
@@ -277,6 +283,11 @@ func (n *Struct) Dump(depth uint) string {
 func (n *PointerTo) Dump(d uint) string {
 	return "(*)"
 }
+
+func (n *ArrayOf) Dump(d uint) string {
+	return "([])"
+}
+
 
 func (n *Ident) Dump(d uint) string {
 	return ws(d) + n.Val + "\n"
