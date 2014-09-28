@@ -67,6 +67,12 @@ type ArrayOf struct {
 	SubType Node
 }
 
+type IndexInto struct {
+	SpanProvider
+	Index Node
+	Expr Node
+}
+
 type Struct struct {
 	SpanProvider
 	names []string
@@ -285,6 +291,10 @@ func (n *PointerTo) Dump(d uint) string {
 }
 
 func (n *ArrayOf) Dump(d uint) string {
+	return "([])"
+}
+
+func (n *IndexInto) Dump(d uint) string {
 	return "([])"
 }
 

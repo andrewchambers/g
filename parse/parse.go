@@ -478,7 +478,11 @@ func tokToInt64(t *Token) (int64, error) {
 	return strconv.ParseInt(t.Val, 10, 64)
 }
 
+
 func (p *parser) parsePrimaryExpression() Node {
+
+
+    var ret Node = nil
 
 	if p.curTok.Kind == '&'  || p.curTok.Kind == '*' || p.curTok.Kind == '-' {
 		newu := &Unop{}
@@ -488,36 +492,34 @@ func (p *parser) parsePrimaryExpression() Node {
 		expr := p.parsePrimaryExpression()
 		newu.Expr = expr
 		newu.Span.End = expr.GetSpan().End
-		return newu
-	}
-
-	var ret Node = nil
-
-	switch p.curTok.Kind {
-	case IDENTIFIER:
-		v := &Ident{}
-		v.Val = p.curTok.Val
-		v.Span = p.curTok.Span
-		p.next()
-		ret = v
-	case CONSTANT:
-		v := &Constant{}
-		c, err := tokToInt64(p.curTok)
-		if err != nil {
-			p.syntaxError(err.Error(), p.curTok.Span)
-		}
-		v.Val = c
-		v.Span = p.curTok.Span
-		p.next()
-		ret = v
-	case STRING:
-		ret = p.parseString()
-	case '(':
-		p.expect('(')
-		ret = p.parseExpression()
-		p.expect(')')
-	default:
-		p.syntaxError("error parsing expression", p.curTok.Span)
+		ret = newu
+	} else {
+	    switch p.curTok.Kind {
+	    case IDENTIFIER:
+		    v := &Ident{}
+		    v.Val = p.curTok.Val
+		    v.Span = p.curTok.Span
+		    p.next()
+		    ret = v
+	    case CONSTANT:
+		    v := &Constant{}
+		    c, err := tokToInt64(p.curTok)
+		    if err != nil {
+			    p.syntaxError(err.Error(), p.curTok.Span)
+		    }
+		    v.Val = c
+		    v.Span = p.curTok.Span
+		    p.next()
+		    ret = v
+	    case STRING:
+		    ret = p.parseString()
+	    case '(':
+		    p.expect('(')
+		    ret = p.parseExpression()
+		    p.expect(')')
+	    default:
+		    p.syntaxError("error parsing expression", p.curTok.Span)
+	    }
 	}
 
 loop:
@@ -527,6 +529,8 @@ loop:
 			ret = p.parseCall(ret)
 		case '.':
 			ret = p.parseSelector(ret)
+		case '[':
+		    ret = p.parseIndex(ret)
 		default:
 			break loop
 		}
@@ -552,6 +556,17 @@ func (p *parser) parseCall(funcLike Node) *Call {
 	p.expect(')')
 	call.Args = args
 	return call
+}
+
+func (p *parser) parseIndex(l Node) *IndexInto {
+	idx := &IndexInto{}
+	idx.Span = l.GetSpan()
+	idx.Expr = l
+	p.expect('[')
+	idx.Index = p.parseExpression()
+	idx.Span.End = p.curTok.Span.End
+	p.expect(']')
+	return idx
 }
 
 func (p *parser) parseSelector(l Node) *Selector {
