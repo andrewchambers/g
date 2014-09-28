@@ -134,6 +134,7 @@ func (p *parser) parseVarDecl() *VarDecl {
 		p.next()
 		r := p.parseExpression()
 		ret.Init = &Assign{}
+		ret.Init.Op = '='
 		ret.Init.R = r
 		ret.Init.L = ident
 		ret.Init.Span = ident.Span
@@ -168,17 +169,16 @@ func (p *parser) parseFuncDecl() *FuncDecl {
 }
 
 func (p *parser) parseType(allowEmpty bool) Node {
-	
-	
+
 	switch p.curTok.Kind {
 	case '[':
-	    ret := &ArrayOf{}
-        p.expect('[')
-        p.expect(CONSTANT)
-        p.expect(']')
-        t := p.parseType(false)
-        ret.SubType =t 
-        return ret
+		ret := &ArrayOf{}
+		p.expect('[')
+		p.expect(CONSTANT)
+		p.expect(']')
+		t := p.parseType(false)
+		ret.SubType = t
+		return ret
 	case STRUCT:
 		return p.parseStruct()
 	case IDENTIFIER:
@@ -480,7 +480,7 @@ func tokToInt64(t *Token) (int64, error) {
 
 func (p *parser) parsePrimaryExpression() Node {
 
-	if p.curTok.Kind == '&'  || p.curTok.Kind == '*' || p.curTok.Kind == '-' {
+	if p.curTok.Kind == '&' || p.curTok.Kind == '*' || p.curTok.Kind == '-' {
 		newu := &Unop{}
 		newu.Op = p.curTok.Kind
 		newu.Span = p.curTok.Span
