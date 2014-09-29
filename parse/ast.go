@@ -75,8 +75,8 @@ type IndexInto struct {
 
 type Struct struct {
 	SpanProvider
-	names []string
-	types []Node
+	Names []string
+	Types []Node
 }
 
 type Binop struct {

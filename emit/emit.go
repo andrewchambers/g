@@ -1030,6 +1030,8 @@ func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
 		}
 		ret := &GPointer{PointsTo: t}
 		return ret, nil
+    case *parse.Struct:
+        return e.parseStructToGType(n)
 	case *parse.ArrayOf:
 		t, err := e.parseNodeToGType(n.SubType)
 		if err != nil {
@@ -1047,10 +1049,33 @@ func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
 	panic("unreachable")
 }
 
+func (e *emitter) parseStructToGType(n *parse.Struct) (GType, error) {
+    ret := &GStruct{}
+    for idx,name := range n.Names {
+        t,err := e.parseNodeToGType(n.Types[idx])
+        if err != nil {
+            return nil,err
+        }
+        ret.Names = append(ret.Names,name)
+        ret.Types = append(ret.Types,t)
+    }
+    return ret,nil
+}
+
 func gTypeToLLVM(t GType) string {
 	switch t := t.(type) {
 	case *GVoid:
 		return "void"
+	case *GStruct:
+	    ret := "type {"
+	    for idx,subt := range t.Types {
+	        ret += gTypeToLLVM(subt)
+	        if idx != len(t.Types) - 1 {
+	            ret += ","
+	        }
+	    }
+	    ret += "}"
+	    return ret
 	case *GPointer:
 		return fmt.Sprintf("%s*", gTypeToLLVM(t.PointsTo))
     case *GArray:

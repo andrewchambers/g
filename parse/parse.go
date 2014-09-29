@@ -266,9 +266,10 @@ func (p *parser) parseStruct() Node {
 	p.expect(STRUCT)
 	p.expect('{')
 	for p.curTok.Kind == IDENTIFIER {
-		ret.names = append(ret.names, p.curTok.Val)
+		ret.Names = append(ret.Names, p.curTok.Val)
 		p.next()
-		ret.types = append(ret.types, p.parseType(false))
+		ret.Types = append(ret.Types, p.parseType(false))
+		p.expect(';')
 	}
 	ret.Span.End = p.curTok.Span.End
 	p.expect('}')

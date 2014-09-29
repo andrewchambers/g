@@ -108,6 +108,32 @@ func (i *GInt) Equals(other GType) bool {
 	return i.Bits == oint.Bits && i.Signed == oint.Signed
 }
 
+func (s *GStruct) String() string {
+	return "GStruct"
+}
+
+func (s *GStruct) Equals(other GType) bool {
+	o, ok := other.(*GStruct)
+	if !ok {
+		return false
+	}
+	
+	if len(o.Names) != len(s.Names) {
+	    return false
+	}
+	
+	for idx,name := range s.Names {
+	    if o.Names[idx] != name {
+	        return false
+	    }
+	    if !s.Types[idx].Equals(o.Types[idx]) {
+	        return false
+	    }
+	}
+	
+	return true
+}
+
 func (i *GInt) String() string {
 	if i.Alias != "" {
 		return i.Alias
