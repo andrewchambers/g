@@ -454,7 +454,7 @@ func (e *emitter) emitAssign(ass *parse.Assign) error {
 	}
 
 	if !l.getGType().Equals(r.getGType()) {
-		panic("assignment of incompatible types")
+		return fmt.Errorf("assignment of incompatible types %s and %s",l.getGType(),r.getGType())
 	}
 	err = e.emitStore(l.getLLVMRepr(), r)
 	if err != nil {
@@ -538,7 +538,7 @@ func (e *emitter) emitZeroMem(name string, t GType) error {
 	    szx := e.newLLVMName()
 	    sz := e.newLLVMName()
 	    llty := gTypeToLLVM(t)
-	    e.emiti("%s = getelementptr %s* null, i32 1\n",sz,llty)
+	    e.emiti("%s = getelementptr %s* null, i32 1\n",szx,llty)
 	    e.emiti("%s = cast %s* %s to i64\n",sz,llty,szx)
 	    e.emiti("call void @memset(%s, i8 0, i64 %s)\n",name,sz)
 	}
@@ -551,6 +551,16 @@ func (e *emitter) emitRemoveLValness(v Value) (Value, error) {
 	}
 	switch v := v.(type) {
 	case *exprValue:
+	    if isArrayVal(v) {
+	        //Arrays are already stored as pointers, so there is nothing to do.
+	        //XXX this may be wrong.
+	        ret := &exprValue{
+			    llvmName: v.llvmName,
+			    lval:     false,
+			    gType:    v.getGType(),
+		    }
+		    return ret, nil
+	    }
 		name := e.newLLVMName()
 		e.emiti("%s = load %s* %s\n", name, gTypeToLLVM(v.getGType()), v.getLLVMRepr())
 		ret := &exprValue{
@@ -619,12 +629,61 @@ func (e *emitter) emitExpression(expr parse.Node) (Value, error) {
 		return e.emitBinop(expr)
 	case *parse.Unop:
 		return e.emitUnop(expr)
+	case *parse.IndexInto:
+		return e.emitIndex(expr)
 	case *parse.Ident:
 		return e.emitIdent(expr)
 	default:
 		panic(expr)
 	}
 }
+
+func (e *emitter) emitIndex(i *parse.IndexInto) (Value,error) {
+    v,err := e.emitExpression(i.Expr)
+    if err != nil {
+        return nil,err
+    }
+    
+    idx,err := e.emitExpression(i.Index)
+    if err != nil {
+        return nil,err
+    }
+	if isConstantVal(idx) {
+	    // Depends on what builtin int type is maybe?
+		idx, err = e.emitRemoveConstant(idx, builtinUInt64GType)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if idx.isLVal() {
+		idx, err = e.emitRemoveLValness(idx)
+		if err != nil {
+			return nil, err
+		}
+	}
+    
+    if !isPointerVal(v) && !isArrayVal(v) {
+        return nil,fmt.Errorf("%s is a non indexable type",v.getGType())
+    }
+    
+    var ret Value = nil
+    
+    if v.isLVal() {
+        v,err = e.emitRemoveLValness(v)
+        if err != nil {
+            return nil,err
+        }
+    }
+    retname := e.newLLVMName()
+    e.emiti("%s = getelementptr %s %s, %s %s",retname,gTypeToLLVM(v.getGType()),v.getLLVMRepr(),gTypeToLLVM(idx.getGType()),idx.getLLVMRepr())
+    retv := &exprValue{}
+    retv.lval = true
+    retv.gType = getSubType(v.getGType())
+    retv.llvmName = retname
+    ret = retv
+
+    return ret,nil
+} 
 
 func (e *emitter) emitCall(c *parse.Call) (Value, error) {
 
@@ -734,6 +793,7 @@ func (e *emitter) emitIdent(i *parse.Ident) (Value, error) {
 	}
 }
 
+
 func isConstantVal(v Value) bool {
 	_, ok := v.(*intConstant)
 	if ok {
@@ -744,6 +804,29 @@ func isConstantVal(v Value) bool {
 		return true
 	}
 	return false
+}
+
+func isPointerVal(v Value) bool {
+	t := v.getGType()
+	_,ok := t.(*GPointer)
+	return ok
+}
+
+func isArrayVal(v Value) bool {
+	t := v.getGType()
+	_,ok := t.(*GArray)
+	return ok
+}
+
+func getSubType(t GType) GType {
+    switch t := t.(type) {
+        case *GPointer:
+            return t.PointsTo
+        case *GArray:
+            return t.SubType
+        default:
+        panic("bad type")
+    }
 }
 
 func isIntType(t GType) bool {
@@ -971,7 +1054,7 @@ func gTypeToLLVM(t GType) string {
 	case *GPointer:
 		return fmt.Sprintf("%s*", gTypeToLLVM(t.PointsTo))
     case *GArray:
-		return fmt.Sprintf("<%d * %s>", t.Dim,gTypeToLLVM(t.SubType))
+		return fmt.Sprintf("[%d * %s]", t.Dim,gTypeToLLVM(t.SubType))
 	case *GInt:
 		switch t.Bits {
 		case 64:
