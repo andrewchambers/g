@@ -179,8 +179,11 @@ func (p *parser) parseType(allowEmpty bool) Node {
 		    p.expect(CONSTANT)
 		}
 		c,err := tokToInt64(p.curTok)
-		if err != nil || c < 0 {
-		    p.syntaxError("bad array dimension",p.curTok.Span)
+		if err != nil {
+		    p.syntaxError(err.Error(),p.curTok.Span)
+		}
+		if c < 0 {
+		    p.syntaxError("negative array dimension",p.curTok.Span)
 		}
 		ret.Dim = uint(c)
 		p.expect(CONSTANT)
