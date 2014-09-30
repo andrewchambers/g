@@ -174,6 +174,15 @@ func (p *parser) parseType(allowEmpty bool) Node {
 	case '[':
 		ret := &ArrayOf{}
 		p.expect('[')
+		if p.curTok.Kind != CONSTANT {
+		    //Trigger syntax error
+		    p.expect(CONSTANT)
+		}
+		c,err := tokToInt64(p.curTok)
+		if err != nil || c < 0 {
+		    p.syntaxError("bad array dimension",p.curTok.Span)
+		}
+		ret.Dim = uint(c)
 		p.expect(CONSTANT)
 		p.expect(']')
 		t := p.parseType(false)
@@ -476,9 +485,12 @@ func (p *parser) parsePrec5() Node {
 }
 
 func tokToInt64(t *Token) (int64, error) {
-	return strconv.ParseInt(t.Val, 10, 64)
+    v,err := strconv.ParseInt(t.Val, 10, 64)
+	if err != nil {
+	    return 0,err
+	}
+	return v,nil
 }
-
 
 func (p *parser) parsePrimaryExpression() Node {
 
