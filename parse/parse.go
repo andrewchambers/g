@@ -13,6 +13,10 @@ type parser struct {
 	err     error
 }
 
+func ParsePackage() (*Package,error) {
+    return nil,nil
+}
+
 func Parse(c chan *Token) (*File, error) {
 	//Read channel until empty incase of errors
 	defer func() {

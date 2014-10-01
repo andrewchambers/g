@@ -9,6 +9,10 @@ type Node interface {
 	GetSpan() FileSpan
 }
 
+type Package struct {
+	Files []*File
+}
+
 type File struct {
 	SpanProvider
 	Pkg string

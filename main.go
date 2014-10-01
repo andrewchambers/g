@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/andrewchambers/g/emit"
 	"github.com/andrewchambers/g/parse"
+	"github.com/andrewchambers/g/target"
 	"io"
 	"os"
 	"runtime/pprof"
@@ -19,7 +20,7 @@ func printUsage() {
 	printVersion()
 	fmt.Println()
 	fmt.Println("This software is a g compiler - https://github.com/andrewchambers/g")
-	fmt.Println("It emits text llvm bytecode.")
+	fmt.Println("It emits text llvm bytecode as plain text.")
 	fmt.Println()
 	fmt.Println("Software by Andrew Chambers 2014 - andrewchamberss@gmail.com")
 	fmt.Println()
@@ -121,7 +122,8 @@ func parseFile(sourceFile string) *parse.File {
 
 func compileFile(sourceFile string, out io.WriteCloser) {
 	ast := parseFile(sourceFile)
-	err := emit.EmitModule(bufio.NewWriter(out), ast)
+	target := target.GetTarget()
+	err := emit.EmitModule(target,bufio.NewWriter(out), ast)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)

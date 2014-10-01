@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/andrewchambers/g/parse"
-	"runtime"
+	"github.com/andrewchambers/g/target"
 	"strings"
 )
 
 type emitter struct {
+
+    machine target.TargetMachine
+
 	gscope    *scope
 	curscope  *scope
 	symbolMap map[parse.Node]symbol
@@ -82,8 +85,9 @@ func (c *boolConstant) getGType() GType {
 	return builtinBoolGType
 }
 
-func newEmitter(out *bufio.Writer) *emitter {
+func newEmitter(m target.TargetMachine,out *bufio.Writer) *emitter {
 	ret := &emitter{}
+	ret.machine = m
 	ret.curscope = newScope(nil)
 	ret.gscope = ret.curscope
 	ret.out = out
@@ -152,23 +156,14 @@ func (e *emitter) emitl(l string) {
 	e.emit("  %s:\n", l)
 }
 
-func EmitModule(out *bufio.Writer, file *parse.File) error {
-	e := newEmitter(out)
+func EmitModule(machine target.TargetMachine,out *bufio.Writer, file *parse.File) error {
+	e := newEmitter(machine,out)
 	err := e.collectGlobalSymbols(file)
 	if err != nil {
 		return err
 	}
-	e.emit("; compiled from file %s\n", file.Span.Path)
-	//XXX hack to make it work on my laptop.
-	//Fix and support cross compiling
-	switch runtime.GOOS {
-	case "linux":
-		e.emit("target triple = \"x86_64-pc-linux-gnu\"\n\n")
-	case "windows":
-		e.emit("target triple = \"i686-pc-mingw32\"\n\n")
-	default:
-		return fmt.Errorf("unknown platform %s", runtime.GOOS)
-	}
+	
+	e.emitPrelude()
 
 	for _, fd := range file.FuncDecls {
 		e.llvmLabelCounter = 0
@@ -180,6 +175,10 @@ func EmitModule(out *bufio.Writer, file *parse.File) error {
 	}
 	out.Flush()
 	return nil
+}
+
+func (e *emitter) emitPrelude() {
+    e.emit("target = \"%s\"",e.machine.LLVMTargetTriple());
 }
 
 func (e *emitter) handleFuncPrologue(fd *parse.FuncDecl) error {
