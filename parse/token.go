@@ -34,6 +34,7 @@ const (
 	SUBASSIGN
 	XORASSIGN
 	MULASSIGN
+	ORASSIGN
 	AND
 	ANDNOT
 	OR
@@ -73,9 +74,10 @@ func (k TokenKind) String() string {
 		SUBASSIGN:  "-=",
 		MULASSIGN:  "*=",
 		XORASSIGN:  "^=",
-		AND:        "&",
+		ORASSIGN:  "^=",
+		AND:        "&&",
 		ANDNOT:     "&^",
-		OR:         "|",
+		OR:         "||",
 		LSHIFT:     "<<",
 		RSHIFT:     ">>",
 	}

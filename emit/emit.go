@@ -178,7 +178,7 @@ func EmitModule(machine target.TargetMachine,out *bufio.Writer, file *parse.File
 }
 
 func (e *emitter) emitPrelude() {
-    e.emit("target = \"%s\"",e.machine.LLVMTargetTriple());
+    e.emit("target = \"%s\"\n\n",e.machine.LLVMTargetTriple());
 }
 
 func (e *emitter) handleFuncPrologue(fd *parse.FuncDecl) error {
@@ -934,8 +934,12 @@ func (e *emitter) emitBinop2(op parse.TokenKind, l,r Value) (Value, error) {
 		e.emiti("%s = srem %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
 	case '^':
 		e.emiti("%s = xor %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
+	case '|':
+		e.emiti("%s = or %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
+	case '&':
+		e.emiti("%s = and %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
 	default:
-		panic(op)
+		return nil,fmt.Errorf("unimplemented binary operator %s",op)
 	}
 	return ret, nil
 }

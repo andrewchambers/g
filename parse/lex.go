@@ -178,6 +178,17 @@ func (l *lexer) lex() {
 					l.unreadRune()
 					l.sendTok('=', "=")
 				}
+			case '|':
+				next, _ := l.readRune()
+				switch next {
+				case '|':
+					l.sendTok(OR, "||")
+				case '=':
+					l.sendTok(ORASSIGN, "|=")
+				default:
+					l.unreadRune()
+					l.sendTok('|', "|")
+				}
 			case '&':
 				next, _ := l.readRune()
 				switch next {
@@ -199,6 +210,7 @@ func (l *lexer) lex() {
 					for {
 						next, eof := l.readRune()
 						if next == '\n' || eof {
+							l.maybeDoSemiHack(next)
 							break
 						}
 					}
@@ -306,6 +318,7 @@ func (l *lexer) skipUntilBlockCommentTerminator() {
 		if eof {
 			l.lexError("unclosed block comment.")
 		}
+		l.maybeDoSemiHack(c)
 		if c == '*' {
 			closeBar, eof := l.readRune()
 			if eof {
@@ -388,13 +401,18 @@ func (l *lexer) readStringLiteral() {
 	l.sendTok(STRING, buff.String())
 }
 
+func (l *lexer) maybeDoSemiHack(r rune) {
+    if r == '\n' && l.semiHack {
+	    l.sendTok(';',";")
+	    l.semiHack = false
+	}
+}
+		
+
 func (l *lexer) skipWhiteSpace() {
 	for {
 		r, _ := l.readRune()
-		if r == '\n' && l.semiHack {
-		    l.sendTok(';',";")
-		    l.semiHack = false
-		}
+		l.maybeDoSemiHack(r)
 		if !isWhiteSpace(r) {
 			l.unreadRune()
 			break
