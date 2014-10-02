@@ -26,7 +26,7 @@ func assembleAndLink() {
 }
 
 func TestSingleFileRetZero(t *testing.T) {
-    files,err := ioutil.ReadDir("")
+    files,err := ioutil.ReadDir("gtestcases/retzero/singlefile/")
     if err != nil {
         t.Fatal("failed to read directory containing single file retzero tests.")
         return

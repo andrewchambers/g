@@ -20,6 +20,8 @@ const (
 	CONST
 	TYPE
 	IF
+	BREAK
+	CONTINUE
 	ELSE
 	NEQ
 	EQ
@@ -49,6 +51,8 @@ func (k TokenKind) String() string {
 		PACKAGE:    "package",
 		IMPORT:     "import",
 		FUNC:       "func",
+		BREAK:      "break",
+		CONTINUE:   "continue",
 		RETURN:     "return",
 		STRUCT:     "struct",
 		CONSTANT:   "constant",

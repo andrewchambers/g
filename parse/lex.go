@@ -27,6 +27,9 @@ type lexer struct {
 	out chan *Token
 	//Set to true if we have hit eof
 	eof bool
+	// Set to true if the last token emitted was one of the semicolon hack tokens.
+	// This is what allows g to omit semicolons when they would otherwise be needed.
+	semiHack bool
 }
 
 // Lexers the reader in a goroutine.
@@ -55,8 +58,21 @@ func (l *lexer) currentPos() FilePos {
 	return FilePos{l.curLine, l.curCol}
 }
 
+func isSemiColonInjectToken(k TokenKind) bool {
+    switch k {
+        case IDENTIFIER,CONSTANT,STRING,BREAK,CONTINUE,RETURN,')','}':
+            return true
+    }
+    return false
+}
+
 // Saves the current lexer position in markedPos.
 func (l *lexer) sendTok(k TokenKind, val string) {
+    if isSemiColonInjectToken(k) {
+        l.semiHack = true
+    } else {
+        l.semiHack = false
+    }
 	l.out <- &Token{k, val, FileSpan{l.path, l.markedPos, l.currentPos()}}
 }
 
@@ -276,6 +292,8 @@ var keywordLUT = map[string]TokenKind{
 	"import":  IMPORT,
 	"for":     FOR,
 	"if":      IF,
+	"break":   BREAK,
+	"continue":CONTINUE,
 	"else":    ELSE,
 	"type":    TYPE,
 	"var":     VAR,
@@ -373,6 +391,10 @@ func (l *lexer) readStringLiteral() {
 func (l *lexer) skipWhiteSpace() {
 	for {
 		r, _ := l.readRune()
+		if r == '\n' && l.semiHack {
+		    l.sendTok(';',";")
+		    l.semiHack = false
+		}
 		if !isWhiteSpace(r) {
 			l.unreadRune()
 			break

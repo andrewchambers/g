@@ -74,6 +74,7 @@ func (p *parser) parseFile() {
 	p.ast.Span = p.curTok.Span
 	p.ast.Pkg = p.curTok.Val
 	p.expect(IDENTIFIER)
+	p.expect(';')
 	p.parseImportList()
 	p.parseTopLevelDeclarations()
 }
@@ -119,8 +120,9 @@ func (p *parser) parseTopLevelDeclarations() {
 		case CONST:
 			p.parseConst()
 		default:
-			p.syntaxError("expected var, type, const or func", p.curTok.Span)
+			p.syntaxError(fmt.Sprintf("expected var, type, const or func got %s",p.curTok.Kind), p.curTok.Span)
 		}
+		p.expect(';')
 	}
 }
 
