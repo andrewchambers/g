@@ -9,8 +9,7 @@ import (
 )
 
 type emitter struct {
-
-    machine target.TargetMachine
+	machine target.TargetMachine
 
 	gscope    *scope
 	curscope  *scope
@@ -85,7 +84,7 @@ func (c *boolConstant) getGType() GType {
 	return builtinBoolGType
 }
 
-func newEmitter(m target.TargetMachine,out *bufio.Writer) *emitter {
+func newEmitter(m target.TargetMachine, out *bufio.Writer) *emitter {
 	ret := &emitter{}
 	ret.machine = m
 	ret.curscope = newScope(nil)
@@ -156,13 +155,13 @@ func (e *emitter) emitl(l string) {
 	e.emit("  %s:\n", l)
 }
 
-func EmitModule(machine target.TargetMachine,out *bufio.Writer, file *parse.File) error {
-	e := newEmitter(machine,out)
+func EmitModule(machine target.TargetMachine, out *bufio.Writer, file *parse.File) error {
+	e := newEmitter(machine, out)
 	err := e.collectGlobalSymbols(file)
 	if err != nil {
 		return err
 	}
-	
+
 	e.emitPrelude()
 
 	for _, fd := range file.FuncDecls {
@@ -178,7 +177,7 @@ func EmitModule(machine target.TargetMachine,out *bufio.Writer, file *parse.File
 }
 
 func (e *emitter) emitPrelude() {
-    e.emit("target = \"%s\"\n\n",e.machine.LLVMTargetTriple());
+	e.emit("target = \"%s\"\n\n", e.machine.LLVMTargetTriple())
 }
 
 func (e *emitter) handleFuncPrologue(fd *parse.FuncDecl) error {
@@ -401,8 +400,7 @@ func (e *emitter) emitFor(f *parse.For) error {
 }
 
 func (e *emitter) emitAssign(ass *parse.Assign) error {
-    
-    
+
 	l, err := e.emitExpression(ass.L)
 	if err != nil {
 		return err
@@ -415,28 +413,28 @@ func (e *emitter) emitAssign(ass *parse.Assign) error {
 	if !l.isLVal() {
 		return fmt.Errorf("assigning to a non lvalue")
 	}
-	
-    switch ass.Op {
-        case parse.ADDASSIGN:
-            r,err = e.emitBinop2('+',l,r)
-            if err != nil {
-                return err
-            }
-        case parse.SUBASSIGN:
-            r,err = e.emitBinop2('-',l,r)
-            if err != nil {
-                return err
-            }
-        case parse.MULASSIGN:
-            r,err = e.emitBinop2('*',l,r)
-            if err != nil {
-                return err
-            }
-        case '=':
-            //pass
-        default:
-            panic(ass.Op)
-    }
+
+	switch ass.Op {
+	case parse.ADDASSIGN:
+		r, err = e.emitBinop2('+', l, r)
+		if err != nil {
+			return err
+		}
+	case parse.SUBASSIGN:
+		r, err = e.emitBinop2('-', l, r)
+		if err != nil {
+			return err
+		}
+	case parse.MULASSIGN:
+		r, err = e.emitBinop2('*', l, r)
+		if err != nil {
+			return err
+		}
+	case '=':
+		//pass
+	default:
+		panic(ass.Op)
+	}
 
 	if isConstantVal(r) {
 		r, err = e.emitRemoveConstant(r, l.getGType())
@@ -453,7 +451,7 @@ func (e *emitter) emitAssign(ass *parse.Assign) error {
 	}
 
 	if !l.getGType().Equals(r.getGType()) {
-		return fmt.Errorf("assignment of incompatible types %s and %s",l.getGType(),r.getGType())
+		return fmt.Errorf("assignment of incompatible types %s and %s", l.getGType(), r.getGType())
 	}
 	err = e.emitStore(l.getLLVMRepr(), r)
 	if err != nil {
@@ -534,12 +532,12 @@ func (e *emitter) emitZeroMem(name string, t GType) error {
 			panic("internal error")
 		}
 	default:
-	    szx := e.newLLVMName()
-	    sz := e.newLLVMName()
-	    llty := gTypeToLLVM(t)
-	    e.emiti("%s = getelementptr %s* null, i32 1\n",szx,llty)
-	    e.emiti("%s = cast %s* %s to i64\n",sz,llty,szx)
-	    e.emiti("call void @memset(%s, i8 0, i64 %s)\n",name,sz)
+		szx := e.newLLVMName()
+		sz := e.newLLVMName()
+		llty := gTypeToLLVM(t)
+		e.emiti("%s = getelementptr %s* null, i32 1\n", szx, llty)
+		e.emiti("%s = cast %s* %s to i64\n", sz, llty, szx)
+		e.emiti("call void @memset(%s, i8 0, i64 %s)\n", name, sz)
 	}
 	return nil
 }
@@ -550,16 +548,16 @@ func (e *emitter) emitRemoveLValness(v Value) (Value, error) {
 	}
 	switch v := v.(type) {
 	case *exprValue:
-	    if isArrayVal(v) {
-	        //Arrays are already stored as pointers, so there is nothing to do.
-	        //XXX this may be wrong.
-	        ret := &exprValue{
-			    llvmName: v.llvmName,
-			    lval:     false,
-			    gType:    v.getGType(),
-		    }
-		    return ret, nil
-	    }
+		if isArrayVal(v) {
+			//Arrays are already stored as pointers, so there is nothing to do.
+			//XXX this may be wrong.
+			ret := &exprValue{
+				llvmName: v.llvmName,
+				lval:     false,
+				gType:    v.getGType(),
+			}
+			return ret, nil
+		}
 		name := e.newLLVMName()
 		e.emiti("%s = load %s* %s\n", name, gTypeToLLVM(v.getGType()), v.getLLVMRepr())
 		ret := &exprValue{
@@ -637,18 +635,18 @@ func (e *emitter) emitExpression(expr parse.Node) (Value, error) {
 	}
 }
 
-func (e *emitter) emitIndex(i *parse.IndexInto) (Value,error) {
-    v,err := e.emitExpression(i.Expr)
-    if err != nil {
-        return nil,err
-    }
-    
-    idx,err := e.emitExpression(i.Index)
-    if err != nil {
-        return nil,err
-    }
+func (e *emitter) emitIndex(i *parse.IndexInto) (Value, error) {
+	v, err := e.emitExpression(i.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	idx, err := e.emitExpression(i.Index)
+	if err != nil {
+		return nil, err
+	}
 	if isConstantVal(idx) {
-	    // Depends on what builtin int type is maybe?
+		// Depends on what builtin int type is maybe?
 		idx, err = e.emitRemoveConstant(idx, builtinUInt64GType)
 		if err != nil {
 			return nil, err
@@ -660,29 +658,29 @@ func (e *emitter) emitIndex(i *parse.IndexInto) (Value,error) {
 			return nil, err
 		}
 	}
-    
-    if !isPointerVal(v) && !isArrayVal(v) {
-        return nil,fmt.Errorf("%s is a non indexable type",v.getGType())
-    }
-    
-    var ret Value = nil
-    
-    if v.isLVal() {
-        v,err = e.emitRemoveLValness(v)
-        if err != nil {
-            return nil,err
-        }
-    }
-    retname := e.newLLVMName()
-    e.emiti("%s = getelementptr %s %s, %s %s",retname,gTypeToLLVM(v.getGType()),v.getLLVMRepr(),gTypeToLLVM(idx.getGType()),idx.getLLVMRepr())
-    retv := &exprValue{}
-    retv.lval = true
-    retv.gType = getSubType(v.getGType())
-    retv.llvmName = retname
-    ret = retv
 
-    return ret,nil
-} 
+	if !isPointerVal(v) && !isArrayVal(v) {
+		return nil, fmt.Errorf("%s is a non indexable type", v.getGType())
+	}
+
+	var ret Value = nil
+
+	if v.isLVal() {
+		v, err = e.emitRemoveLValness(v)
+		if err != nil {
+			return nil, err
+		}
+	}
+	retname := e.newLLVMName()
+	e.emiti("%s = getelementptr %s %s, %s %s", retname, gTypeToLLVM(v.getGType()), v.getLLVMRepr(), gTypeToLLVM(idx.getGType()), idx.getLLVMRepr())
+	retv := &exprValue{}
+	retv.lval = true
+	retv.gType = getSubType(v.getGType())
+	retv.llvmName = retname
+	ret = retv
+
+	return ret, nil
+}
 
 func (e *emitter) emitCall(c *parse.Call) (Value, error) {
 
@@ -792,7 +790,6 @@ func (e *emitter) emitIdent(i *parse.Ident) (Value, error) {
 	}
 }
 
-
 func isConstantVal(v Value) bool {
 	_, ok := v.(*intConstant)
 	if ok {
@@ -807,25 +804,25 @@ func isConstantVal(v Value) bool {
 
 func isPointerVal(v Value) bool {
 	t := v.getGType()
-	_,ok := t.(*GPointer)
+	_, ok := t.(*GPointer)
 	return ok
 }
 
 func isArrayVal(v Value) bool {
 	t := v.getGType()
-	_,ok := t.(*GArray)
+	_, ok := t.(*GArray)
 	return ok
 }
 
 func getSubType(t GType) GType {
-    switch t := t.(type) {
-        case *GPointer:
-            return t.PointsTo
-        case *GArray:
-            return t.SubType
-        default:
-        panic("bad type")
-    }
+	switch t := t.(type) {
+	case *GPointer:
+		return t.PointsTo
+	case *GArray:
+		return t.SubType
+	default:
+		panic("bad type")
+	}
 }
 
 func isIntType(t GType) bool {
@@ -833,10 +830,10 @@ func isIntType(t GType) bool {
 	return ok
 }
 
-func (e *emitter) emitBinop2(op parse.TokenKind, l,r Value) (Value, error) {
-    
-    var err error
-    
+func (e *emitter) emitBinop2(op parse.TokenKind, l, r Value) (Value, error) {
+
+	var err error
+
 	if isConstantVal(l) && isConstantVal(r) {
 		c, err := foldConstantBinop(op, l, r)
 		if err != nil {
@@ -919,9 +916,9 @@ func (e *emitter) emitBinop2(op parse.TokenKind, l,r Value) (Value, error) {
 
 	switch op {
 	case parse.RSHIFT:
-	    e.emiti("%s = shr %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
+		e.emiti("%s = shr %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
 	case parse.LSHIFT:
-	    e.emiti("%s = shl %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
+		e.emiti("%s = shl %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
 	case '+':
 		e.emiti("%s = add %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
 	case '-':
@@ -939,13 +936,13 @@ func (e *emitter) emitBinop2(op parse.TokenKind, l,r Value) (Value, error) {
 	case '&':
 		e.emiti("%s = and %s %s, %s\n", ret.llvmName, llty, l.getLLVMRepr(), r.getLLVMRepr())
 	default:
-		return nil,fmt.Errorf("unimplemented binary operator %s",op)
+		return nil, fmt.Errorf("unimplemented binary operator %s", op)
 	}
 	return ret, nil
 }
 
 func (e *emitter) emitBinop(b *parse.Binop) (Value, error) {
-    l, err := e.emitExpression(b.L)
+	l, err := e.emitExpression(b.L)
 	if err != nil {
 		return nil, err
 	}
@@ -953,8 +950,8 @@ func (e *emitter) emitBinop(b *parse.Binop) (Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	v,err := e.emitBinop2(b.Op,l,r)
-	return v,err
+	v, err := e.emitBinop2(b.Op, l, r)
+	return v, err
 }
 
 func (e *emitter) emitUnop(u *parse.Unop) (Value, error) {
@@ -964,8 +961,8 @@ func (e *emitter) emitUnop(u *parse.Unop) (Value, error) {
 	}
 
 	if isConstantVal(v) {
-	    v,err = foldConstantUnop(u.Op,v)
-	    return v,err
+		v, err = foldConstantUnop(u.Op, v)
+		return v, err
 	}
 
 	switch u.Op {
@@ -1033,8 +1030,8 @@ func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
 		}
 		ret := &GPointer{PointsTo: t}
 		return ret, nil
-    case *parse.Struct:
-        return e.parseStructToGType(n)
+	case *parse.Struct:
+		return e.parseStructToGType(n)
 	case *parse.ArrayOf:
 		t, err := e.parseNodeToGType(n.SubType)
 		if err != nil {
@@ -1053,16 +1050,16 @@ func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
 }
 
 func (e *emitter) parseStructToGType(n *parse.Struct) (GType, error) {
-    ret := &GStruct{}
-    for idx,name := range n.Names {
-        t,err := e.parseNodeToGType(n.Types[idx])
-        if err != nil {
-            return nil,err
-        }
-        ret.Names = append(ret.Names,name)
-        ret.Types = append(ret.Types,t)
-    }
-    return ret,nil
+	ret := &GStruct{}
+	for idx, name := range n.Names {
+		t, err := e.parseNodeToGType(n.Types[idx])
+		if err != nil {
+			return nil, err
+		}
+		ret.Names = append(ret.Names, name)
+		ret.Types = append(ret.Types, t)
+	}
+	return ret, nil
 }
 
 func gTypeToLLVM(t GType) string {
@@ -1070,19 +1067,19 @@ func gTypeToLLVM(t GType) string {
 	case *GVoid:
 		return "void"
 	case *GStruct:
-	    ret := "type {"
-	    for idx,subt := range t.Types {
-	        ret += gTypeToLLVM(subt)
-	        if idx != len(t.Types) - 1 {
-	            ret += ","
-	        }
-	    }
-	    ret += "}"
-	    return ret
+		ret := "type {"
+		for idx, subt := range t.Types {
+			ret += gTypeToLLVM(subt)
+			if idx != len(t.Types)-1 {
+				ret += ","
+			}
+		}
+		ret += "}"
+		return ret
 	case *GPointer:
 		return fmt.Sprintf("%s*", gTypeToLLVM(t.PointsTo))
-    case *GArray:
-		return fmt.Sprintf("[%d * %s]", t.Dim,gTypeToLLVM(t.SubType))
+	case *GArray:
+		return fmt.Sprintf("[%d * %s]", t.Dim, gTypeToLLVM(t.SubType))
 	case *GInt:
 		switch t.Bits {
 		case 64:

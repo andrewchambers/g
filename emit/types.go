@@ -26,7 +26,7 @@ type GPointer struct {
 }
 
 type GArray struct {
-    Dim uint
+	Dim     uint
 	SubType GType
 }
 
@@ -66,9 +66,8 @@ func (a *GArray) Equals(other GType) bool {
 }
 
 func (a *GArray) String() string {
-	return fmt.Sprintf("[%d]%s",a.Dim,a.SubType.String())
+	return fmt.Sprintf("[%d]%s", a.Dim, a.SubType.String())
 }
-
 
 func (p *GPointer) Equals(other GType) bool {
 	o, ok := other.(*GPointer)
@@ -117,20 +116,20 @@ func (s *GStruct) Equals(other GType) bool {
 	if !ok {
 		return false
 	}
-	
+
 	if len(o.Names) != len(s.Names) {
-	    return false
+		return false
 	}
-	
-	for idx,name := range s.Names {
-	    if o.Names[idx] != name {
-	        return false
-	    }
-	    if !s.Types[idx].Equals(o.Types[idx]) {
-	        return false
-	    }
+
+	for idx, name := range s.Names {
+		if o.Names[idx] != name {
+			return false
+		}
+		if !s.Types[idx].Equals(o.Types[idx]) {
+			return false
+		}
 	}
-	
+
 	return true
 }
 

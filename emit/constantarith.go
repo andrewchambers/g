@@ -6,9 +6,9 @@ import (
 )
 
 func foldConstantUnop(op parse.TokenKind, v Value) (Value, error) {
-    switch v := v.(type) {
+	switch v := v.(type) {
 	case *intConstant:
-	    switch op {
+		switch op {
 		case '-':
 			return &intConstant{-v.val}, nil
 		default:

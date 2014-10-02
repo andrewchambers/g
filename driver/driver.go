@@ -1,14 +1,13 @@
 package driver
 
-
 import (
-    "fmt"
-    "io"
-    "bufio"
-    "os"
+	"bufio"
+	"fmt"
 	"github.com/andrewchambers/g/emit"
 	"github.com/andrewchambers/g/parse"
 	"github.com/andrewchambers/g/target"
+	"io"
+	"os"
 )
 
 func TokenizeFile(sourceFile string, out io.WriteCloser) error {
@@ -30,7 +29,7 @@ func TokenizeFile(sourceFile string, out io.WriteCloser) error {
 	return nil
 }
 
-func ParseFile(sourceFile string) (*parse.File,error) {
+func ParseFile(sourceFile string) (*parse.File, error) {
 	f, err := os.Open(sourceFile)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open source file %s for lexing: %s\n", sourceFile, err)
@@ -40,16 +39,16 @@ func ParseFile(sourceFile string) (*parse.File,error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse error: %s\n", err)
 	}
-	return ast,nil
+	return ast, nil
 }
 
-func CompileFileToLLVM(machine target.TargetMachine,sourceFile string, out io.WriteCloser) error {
+func CompileFileToLLVM(machine target.TargetMachine, sourceFile string, out io.WriteCloser) error {
 	defer out.Close()
-	ast,err := ParseFile(sourceFile)
+	ast, err := ParseFile(sourceFile)
 	if err != nil {
 		return err
 	}
-	err = emit.EmitModule(machine,bufio.NewWriter(out), ast)
+	err = emit.EmitModule(machine, bufio.NewWriter(out), ast)
 	if err != nil {
 		return err
 	}

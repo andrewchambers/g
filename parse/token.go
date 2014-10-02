@@ -74,7 +74,7 @@ func (k TokenKind) String() string {
 		SUBASSIGN:  "-=",
 		MULASSIGN:  "*=",
 		XORASSIGN:  "^=",
-		ORASSIGN:  "^=",
+		ORASSIGN:   "^=",
 		AND:        "&&",
 		ANDNOT:     "&^",
 		OR:         "||",

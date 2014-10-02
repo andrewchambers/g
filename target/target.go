@@ -1,16 +1,16 @@
 package target
 
 import (
-    "fmt"
-    "runtime"
+	"fmt"
+	"runtime"
 )
 
 type TargetMachine interface {
-    // The LLVM triple the target uses
-    LLVMTargetTriple() string
-    // The native width of machine registers
-    // This is used for default int size, and default array index type.
-    DefaultIntBitWidth() uint
+	// The LLVM triple the target uses
+	LLVMTargetTriple() string
+	// The native width of machine registers
+	// This is used for default int size, and default array index type.
+	DefaultIntBitWidth() uint
 }
 
 func GetTarget() TargetMachine {

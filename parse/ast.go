@@ -67,14 +67,14 @@ type PointerTo struct {
 
 type ArrayOf struct {
 	SpanProvider
-	Dim uint
+	Dim     uint
 	SubType Node
 }
 
 type IndexInto struct {
 	SpanProvider
 	Index Node
-	Expr Node
+	Expr  Node
 }
 
 type Struct struct {
@@ -301,7 +301,6 @@ func (n *ArrayOf) Dump(d uint) string {
 func (n *IndexInto) Dump(d uint) string {
 	return "([])"
 }
-
 
 func (n *Ident) Dump(d uint) string {
 	return ws(d) + n.Val + "\n"

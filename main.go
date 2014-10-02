@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/andrewchambers/g/driver"
 	"github.com/andrewchambers/g/target"
-	"os"
 	"io"
+	"os"
 	"runtime/pprof"
 )
 
@@ -77,26 +77,25 @@ func main() {
 	if *tokenizeOnly {
 		err := driver.TokenizeFile(input, output)
 		if err != nil {
-		    fmt.Println(err)
-		    fmt.Println("tokenizer failed.")
-		    os.Exit(1)
+			fmt.Println(err)
+			fmt.Println("tokenizer failed.")
+			os.Exit(1)
 		}
 	} else if *parseOnly {
-		ast,err := driver.ParseFile(input)
+		ast, err := driver.ParseFile(input)
 		if err != nil {
-		    fmt.Println(err)
-		    fmt.Println("parsing failed.")
-		    os.Exit(1)
+			fmt.Println(err)
+			fmt.Println("parsing failed.")
+			os.Exit(1)
 		}
 		fmt.Fprintln(output, ast.Dump(0))
 	} else {
-	    t := target.GetTarget()
-		err := driver.CompileFileToLLVM(t,input, output)
+		t := target.GetTarget()
+		err := driver.CompileFileToLLVM(t, input, output)
 		if err != nil {
-		    fmt.Println(err)
-		    fmt.Println("compilation to llvm failed.")
-		    os.Exit(1)
+			fmt.Println(err)
+			fmt.Println("compilation to llvm failed.")
+			os.Exit(1)
 		}
 	}
 }
-

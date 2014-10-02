@@ -1,10 +1,9 @@
 package emit
 
 import (
-    "fmt"
+	"fmt"
 	"github.com/andrewchambers/g/parse"
 )
-
 
 func (e *emitter) resolveSymbols(n parse.Node) error {
 	switch n := n.(type) {
@@ -29,11 +28,11 @@ func (e *emitter) resolveSymbols(n parse.Node) error {
 			return err
 		}
 	case *parse.IndexInto:
-	    err := e.resolveSymbols(n.Expr)
+		err := e.resolveSymbols(n.Expr)
 		if err != nil {
 			return err
 		}
-	    err = e.resolveSymbols(n.Index)
+		err = e.resolveSymbols(n.Index)
 		if err != nil {
 			return err
 		}
@@ -144,7 +143,6 @@ func (e *emitter) resolveSymbols(n parse.Node) error {
 	return nil
 }
 
-
 func (e *emitter) resolveLocalVarDecl(vd *parse.VarDecl) error {
 	t, err := e.parseNodeToGType(vd.Type)
 	if err != nil {
@@ -170,5 +168,3 @@ func (e *emitter) resolveLocalVarDecl(vd *parse.VarDecl) error {
 	}
 	return err
 }
-
-

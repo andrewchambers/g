@@ -59,20 +59,20 @@ func (l *lexer) currentPos() FilePos {
 }
 
 func isSemiColonInjectToken(k TokenKind) bool {
-    switch k {
-        case IDENTIFIER,CONSTANT,STRING,BREAK,CONTINUE,RETURN,')','}':
-            return true
-    }
-    return false
+	switch k {
+	case IDENTIFIER, CONSTANT, STRING, BREAK, CONTINUE, RETURN, ')', '}':
+		return true
+	}
+	return false
 }
 
 // Saves the current lexer position in markedPos.
 func (l *lexer) sendTok(k TokenKind, val string) {
-    if isSemiColonInjectToken(k) {
-        l.semiHack = true
-    } else {
-        l.semiHack = false
-    }
+	if isSemiColonInjectToken(k) {
+		l.semiHack = true
+	} else {
+		l.semiHack = false
+	}
 	l.out <- &Token{k, val, FileSpan{l.path, l.markedPos, l.currentPos()}}
 }
 
@@ -297,19 +297,19 @@ func (l *lexer) lex() {
 }
 
 var keywordLUT = map[string]TokenKind{
-	"func":    FUNC,
-	"return":  RETURN,
-	"package": PACKAGE,
-	"struct":  STRUCT,
-	"import":  IMPORT,
-	"for":     FOR,
-	"if":      IF,
-	"break":   BREAK,
-	"continue":CONTINUE,
-	"else":    ELSE,
-	"type":    TYPE,
-	"var":     VAR,
-	"const":   CONST,
+	"func":     FUNC,
+	"return":   RETURN,
+	"package":  PACKAGE,
+	"struct":   STRUCT,
+	"import":   IMPORT,
+	"for":      FOR,
+	"if":       IF,
+	"break":    BREAK,
+	"continue": CONTINUE,
+	"else":     ELSE,
+	"type":     TYPE,
+	"var":      VAR,
+	"const":    CONST,
 }
 
 func (l *lexer) skipUntilBlockCommentTerminator() {
@@ -402,12 +402,11 @@ func (l *lexer) readStringLiteral() {
 }
 
 func (l *lexer) maybeDoSemiHack(r rune) {
-    if r == '\n' && l.semiHack {
-	    l.sendTok(';',";")
-	    l.semiHack = false
+	if r == '\n' && l.semiHack {
+		l.sendTok(';', ";")
+		l.semiHack = false
 	}
 }
-		
 
 func (l *lexer) skipWhiteSpace() {
 	for {

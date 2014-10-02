@@ -13,8 +13,8 @@ type parser struct {
 	err     error
 }
 
-func ParsePackage() (*Package,error) {
-    return nil,nil
+func ParsePackage() (*Package, error) {
+	return nil, nil
 }
 
 func Parse(c chan *Token) (*File, error) {
@@ -120,7 +120,7 @@ func (p *parser) parseTopLevelDeclarations() {
 		case CONST:
 			p.parseConst()
 		default:
-			p.syntaxError(fmt.Sprintf("expected var, type, const or func got %s",p.curTok.Kind), p.curTok.Span)
+			p.syntaxError(fmt.Sprintf("expected var, type, const or func got %s", p.curTok.Kind), p.curTok.Span)
 		}
 		p.expect(';')
 	}
@@ -181,15 +181,15 @@ func (p *parser) parseType(allowEmpty bool) Node {
 		ret := &ArrayOf{}
 		p.expect('[')
 		if p.curTok.Kind != CONSTANT {
-		    //Trigger syntax error
-		    p.expect(CONSTANT)
+			//Trigger syntax error
+			p.expect(CONSTANT)
 		}
-		c,err := tokToInt64(p.curTok)
+		c, err := tokToInt64(p.curTok)
 		if err != nil {
-		    p.syntaxError(err.Error(),p.curTok.Span)
+			p.syntaxError(err.Error(), p.curTok.Span)
 		}
 		if c < 0 {
-		    p.syntaxError("negative array dimension",p.curTok.Span)
+			p.syntaxError("negative array dimension", p.curTok.Span)
 		}
 		ret.Dim = uint(c)
 		p.expect(CONSTANT)
@@ -494,18 +494,18 @@ func (p *parser) parsePrec5() Node {
 }
 
 func tokToInt64(t *Token) (int64, error) {
-    v,err := strconv.ParseInt(t.Val, 10, 64)
+	v, err := strconv.ParseInt(t.Val, 10, 64)
 	if err != nil {
-	    return 0,err
+		return 0, err
 	}
-	return v,nil
+	return v, nil
 }
 
 func (p *parser) parsePrimaryExpression() Node {
 
-    var ret Node = nil
+	var ret Node = nil
 
-	if p.curTok.Kind == '&'  || p.curTok.Kind == '*' || p.curTok.Kind == '-' {
+	if p.curTok.Kind == '&' || p.curTok.Kind == '*' || p.curTok.Kind == '-' {
 		newu := &Unop{}
 		newu.Op = p.curTok.Kind
 		newu.Span = p.curTok.Span
@@ -515,32 +515,32 @@ func (p *parser) parsePrimaryExpression() Node {
 		newu.Span.End = expr.GetSpan().End
 		ret = newu
 	} else {
-	    switch p.curTok.Kind {
-	    case IDENTIFIER:
-		    v := &Ident{}
-		    v.Val = p.curTok.Val
-		    v.Span = p.curTok.Span
-		    p.next()
-		    ret = v
-	    case CONSTANT:
-		    v := &Constant{}
-		    c, err := tokToInt64(p.curTok)
-		    if err != nil {
-			    p.syntaxError(err.Error(), p.curTok.Span)
-		    }
-		    v.Val = c
-		    v.Span = p.curTok.Span
-		    p.next()
-		    ret = v
-	    case STRING:
-		    ret = p.parseString()
-	    case '(':
-		    p.expect('(')
-		    ret = p.parseExpression()
-		    p.expect(')')
-	    default:
-		    p.syntaxError("error parsing expression", p.curTok.Span)
-	    }
+		switch p.curTok.Kind {
+		case IDENTIFIER:
+			v := &Ident{}
+			v.Val = p.curTok.Val
+			v.Span = p.curTok.Span
+			p.next()
+			ret = v
+		case CONSTANT:
+			v := &Constant{}
+			c, err := tokToInt64(p.curTok)
+			if err != nil {
+				p.syntaxError(err.Error(), p.curTok.Span)
+			}
+			v.Val = c
+			v.Span = p.curTok.Span
+			p.next()
+			ret = v
+		case STRING:
+			ret = p.parseString()
+		case '(':
+			p.expect('(')
+			ret = p.parseExpression()
+			p.expect(')')
+		default:
+			p.syntaxError("error parsing expression", p.curTok.Span)
+		}
 	}
 
 loop:
@@ -551,7 +551,7 @@ loop:
 		case '.':
 			ret = p.parseSelector(ret)
 		case '[':
-		    ret = p.parseIndex(ret)
+			ret = p.parseIndex(ret)
 		default:
 			break loop
 		}
