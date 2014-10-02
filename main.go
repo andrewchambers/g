@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
-	"github.com/andrewchambers/g/emit"
-	"github.com/andrewchambers/g/parse"
+	"github.com/andrewchambers/g/driver"
 	"github.com/andrewchambers/g/target"
-	"io"
 	"os"
+	"io"
 	"runtime/pprof"
 )
 
@@ -77,56 +75,28 @@ func main() {
 	defer output.Close()
 
 	if *tokenizeOnly {
-		tokenizeFile(input, output)
+		err := driver.TokenizeFile(input, output)
+		if err != nil {
+		    fmt.Println(err)
+		    fmt.Println("tokenizer failed.")
+		    os.Exit(1)
+		}
 	} else if *parseOnly {
-		ast := parseFile(input)
+		ast,err := driver.ParseFile(input)
+		if err != nil {
+		    fmt.Println(err)
+		    fmt.Println("parsing failed.")
+		    os.Exit(1)
+		}
 		fmt.Fprintln(output, ast.Dump(0))
 	} else {
-		compileFile(input, output)
-	}
-}
-
-func tokenizeFile(sourceFile string, out io.WriteCloser) {
-	f, err := os.Open(sourceFile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open source file %s for lexing: %s\n", sourceFile, err)
-		os.Exit(1)
-	}
-	tokChan := parse.Lex(sourceFile, f)
-	for tok := range tokChan {
-		if tok == nil {
-			return
+	    t := target.GetTarget()
+		err := driver.CompileFileToLLVM(t,input, output)
+		if err != nil {
+		    fmt.Println(err)
+		    fmt.Println("compilation to llvm failed.")
+		    os.Exit(1)
 		}
-		if tok.Kind == parse.ERROR {
-			fmt.Fprintln(os.Stderr, tok.Val)
-			os.Exit(1)
-		}
-		fmt.Fprintf(out, "%s:%s:%d:%d\n", tok.Kind, tok.Val, tok.Span.Start.Line, tok.Span.Start.Col)
 	}
 }
 
-func parseFile(sourceFile string) *parse.File {
-	f, err := os.Open(sourceFile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open source file %s for lexing: %s\n", sourceFile, err)
-		os.Exit(1)
-	}
-	tokChan := parse.Lex(sourceFile, f)
-	ast, err := parse.Parse(tokChan)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "parse error: %s\n", err)
-		os.Exit(1)
-	}
-	return ast
-}
-
-func compileFile(sourceFile string, out io.WriteCloser) {
-	ast := parseFile(sourceFile)
-	target := target.GetTarget()
-	err := emit.EmitModule(target,bufio.NewWriter(out), ast)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		os.Exit(1)
-	}
-	out.Close()
-}

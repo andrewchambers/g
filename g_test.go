@@ -13,17 +13,6 @@ import (
 
 // Compile a Single file to an llvm text file, returns the result to a channel.
 
-func compileSingleFileToLLVM() {
-
-}
-
-func compileSingleFileToBinary() {
-
-}
-
-func assembleAndLink() {
-
-}
 
 func TestSingleFileRetZero(t *testing.T) {
     files,err := ioutil.ReadDir("gtestcases/retzero/singlefile/")
@@ -31,7 +20,23 @@ func TestSingleFileRetZero(t *testing.T) {
         t.Fatal("failed to read directory containing single file retzero tests.")
         return
     }
-    for _,_ = range files {
+    for _,finfo = range files {
+        if !finfo.IsDir() && {
         
+        
+        	f, err := os.Open(sourceFile)
+	        if err != nil {
+		        fmt.Fprintf(os.Stderr, "Failed to open source file %s for lexing: %s\n", sourceFile, err)
+		        os.Exit(1)
+	        }
+	        tokChan := parse.Lex(sourceFile, f)
+	        ast, err := parse.Parse(tokChan)
+	        if err != nil {
+		        fmt.Fprintf(os.Stderr, "parse error: %s\n", err)
+		        os.Exit(1)
+	        }
+	        return ast
+	    
+	    
     }
 }
