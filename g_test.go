@@ -16,8 +16,7 @@ import (
 	"testing"
 )
 
-func checkClangIsInstalled() error {
-
+func CheckClangIsWorking() error {
 	tempdir, err := ioutil.TempDir("", "")
 	if err != nil {
 		return err
@@ -30,7 +29,7 @@ func checkClangIsInstalled() error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("gcc", srcPath, "-o", path.Join(tempdir, "prog"))
+	cmd := exec.Command("clang", srcPath, "-o", path.Join(tempdir, "prog"))
 	err = cmd.Run()
 	if err != nil {
 		return err

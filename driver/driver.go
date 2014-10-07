@@ -7,7 +7,9 @@ import (
 	"github.com/andrewchambers/g/parse"
 	"github.com/andrewchambers/g/target"
 	"io"
+	"ioutil"
 	"os"
+	"os/exec"
 )
 
 func TokenizeFile(sourceFile string, out io.WriteCloser) error {
@@ -52,5 +54,22 @@ func CompileFileToLLVM(machine target.TargetMachine, sourceFile string, out io.W
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func LinkLLVMToBinary(llvmFile string, outFile string) error {
+	cmd := exec.Command("clang", llvmFile, "-o", outFile)
+	clangErrors, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	err = cmd.Start()
+	if err != nil {
+		return err
+	}
+
+	errStrings, err := ioutil.ReadAll(clangErrors)
+
+	cmd.Wait()
 	return nil
 }
