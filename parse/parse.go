@@ -275,7 +275,6 @@ func (p *parser) parseStatement() Node {
 		p.expect(';')
 		return ret
 	}
-	panic("unreachable")
 }
 
 func (p *parser) parseStruct() Node {

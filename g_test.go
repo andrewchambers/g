@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-func CheckClangIsWorking() error {
+func checkClangIsWorking() error {
 	tempdir, err := ioutil.TempDir("", "")
 	if err != nil {
 		return err
@@ -81,6 +81,20 @@ func runSingleFileRetZero(itestpath interface{}) (result interface{}) {
 		result = makeFailedTestResult(testpath, "failed to compile file (%s)", err)
 		return
 	}
+	binPath := path.Join(tempdir, "test.ll")
+	err = driver.LinkLLVMToBinary(llPath, binPath)
+	if err != nil {
+		result = makeFailedTestResult(testpath, "failed to link file (%s)", err)
+		return
+	}
+
+	cmd := exec.Command(binPath)
+	err = cmd.Run()
+	if err != nil {
+		result = makeFailedTestResult(testpath, "non zero exit code (%s)", err)
+		return
+	}
+
 	result = testResult{testpath, nil}
 	return
 }
@@ -88,7 +102,7 @@ func runSingleFileRetZero(itestpath interface{}) (result interface{}) {
 // Run all the SingleFileRetZero tests in parallel.
 func TestSingleFileRetZero(t *testing.T) {
 
-	err := checkClangIsInstalled()
+	err := checkClangIsWorking()
 	if err != nil {
 		t.Fatalf("clang failed to run %s", err)
 		return
@@ -103,7 +117,7 @@ func TestSingleFileRetZero(t *testing.T) {
 	iter = util.FilterIterator(iter, func(v interface{}) bool {
 		info, ok := v.(os.FileInfo)
 		if !ok {
-			return false
+			panic("unreachable")
 		}
 		if info.IsDir() {
 			return false
@@ -113,7 +127,7 @@ func TestSingleFileRetZero(t *testing.T) {
 		}
 		return true
 	})
-	results := util.PMap(iter, runSingleFileRetZero)
+	results := util.PMap(iter, runSingleFileRetZero, -1)
 
 	for {
 		v, done := results.Next()

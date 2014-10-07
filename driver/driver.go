@@ -7,7 +7,7 @@ import (
 	"github.com/andrewchambers/g/parse"
 	"github.com/andrewchambers/g/target"
 	"io"
-	"ioutil"
+	"io/ioutil"
 	"os"
 	"os/exec"
 )
@@ -59,7 +59,7 @@ func CompileFileToLLVM(machine target.TargetMachine, sourceFile string, out io.W
 
 func LinkLLVMToBinary(llvmFile string, outFile string) error {
 	cmd := exec.Command("clang", llvmFile, "-o", outFile)
-	clangErrors, err := cmd.StderrPipe()
+	clangErrorPipe, err := cmd.StderrPipe()
 	if err != nil {
 		return err
 	}
@@ -68,8 +68,14 @@ func LinkLLVMToBinary(llvmFile string, outFile string) error {
 		return err
 	}
 
-	errStrings, err := ioutil.ReadAll(clangErrors)
+	errorBytes, err := ioutil.ReadAll(clangErrorPipe)
+	if err != nil {
+		return err
+	}
 
-	cmd.Wait()
+	err = cmd.Wait()
+	if err != nil {
+		return fmt.Errorf("%s", errorBytes)
+	}
 	return nil
 }

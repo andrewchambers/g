@@ -177,7 +177,7 @@ func EmitModule(machine target.TargetMachine, out *bufio.Writer, file *parse.Fil
 }
 
 func (e *emitter) emitPrelude() {
-	e.emit("target = \"%s\"\n\n", e.machine.LLVMTargetTriple())
+	e.emit("target triple = \"%s\"\n\n", e.machine.LLVMTargetTriple())
 }
 
 func (e *emitter) handleFuncPrologue(fd *parse.FuncDecl) error {
@@ -766,8 +766,6 @@ func (e *emitter) emitCall(c *parse.Call) (Value, error) {
 	} else {
 		panic("unimplemented")
 	}
-
-	panic("unreachable")
 }
 
 func (e *emitter) emitIdent(i *parse.Ident) (Value, error) {
@@ -1042,11 +1040,9 @@ func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
 		ret.SubType = t
 		return ret, nil
 	default:
-		panic(n)
 		return nil, fmt.Errorf("invalid type %v", n)
 	}
 
-	panic("unreachable")
 }
 
 func (e *emitter) parseStructToGType(n *parse.Struct) (GType, error) {
