@@ -28,10 +28,10 @@ func PMap(it Iterator, transform func(v interface{}) interface{}, poolSize int) 
 	resultChan := make(chan interface{})
 
 	workerProc := func() {
+		defer wg.Done()
 		for {
 			v := <-jobs
 			if v == nil {
-				wg.Done()
 				break
 			}
 			xformed := transform(v)
@@ -46,10 +46,10 @@ func PMap(it Iterator, transform func(v interface{}) interface{}, poolSize int) 
 	}
 
 	go func() {
+		defer close(jobs)
 		for {
 			v, end := it.Next()
 			if end {
-				close(jobs)
 				break
 			}
 			jobs <- v
