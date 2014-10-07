@@ -41,7 +41,7 @@ func CreateIterator(arr interface{}) Iterator {
 			v,
 		}
 	default:
-		panic(fmt.Sprintf("cannot create Iterator type out of %s"))
+		panic(fmt.Sprintf("cannot create Iterator type out of %s",v.Kind()))
 	}
 }
 
