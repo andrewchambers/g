@@ -32,6 +32,20 @@ func main() int {
 }
 ```
 
+# Status
+
+For a general idea of what works, look inside the gtestcases folder.
+
+# Build and test:
+[![Build Status](https://travis-ci.org/andrewchambers/g.svg?branch=master)](https://travis-ci.org/andrewchambers/g)
+
+install clang then run:
+
+```
+go get github.com/andrewchambers/g
+cd $GOPATH/src/andrewchambers/g
+go test ./...
+```
 
 # brain storm
 
