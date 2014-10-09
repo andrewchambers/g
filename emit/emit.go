@@ -110,7 +110,7 @@ func (e *emitter) newLLVMName() string {
 func (e *emitter) addBuiltinTypes() {
 	// Built in types
 	e.curscope.declareType("bool", builtinBoolGType)
-	e.curscope.declareType("int", builtinInt64GType)
+	e.curscope.declareType("int", getDefaultIntType(e.machine))
 	e.curscope.declareType("int8", builtinInt8GType)
 	e.curscope.declareType("int16", builtinInt16GType)
 	e.curscope.declareType("int32", builtinInt32GType)

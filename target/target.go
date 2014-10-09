@@ -17,6 +17,8 @@ func GetTarget() TargetMachine {
 	switch runtime.GOOS {
 	case "linux":
 		return &X86_64_Linux_Target{}
+	case "windows":
+		return &X86_Windows_Target{}
 	default:
 		panic(fmt.Sprintf("unknown platform %s", runtime.GOOS))
 	}
