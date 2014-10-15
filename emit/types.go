@@ -1,6 +1,9 @@
 package emit
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/andrewchambers/g/target"
+)
 
 type GType interface {
 	String() string
@@ -48,6 +51,16 @@ var builtinUInt8GType GType = &GInt{"int8", 8, false}
 var builtinUInt16GType GType = &GInt{"uint16", 16, false}
 var builtinUInt32GType GType = &GInt{"uint32", 32, false}
 var builtinUInt64GType GType = &GInt{"uint64", 64, false}
+
+func getDefaultIntType(tm target.TargetMachine) GType {
+	switch tm.DefaultIntBitWidth() {
+	case 32:
+		return builtinInt32GType
+	case 64:
+		return builtinInt64GType
+	}
+	panic("internal error")
+}
 
 func isBool(t GType) bool {
 	v, ok := t.(*GInt)
