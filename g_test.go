@@ -127,7 +127,7 @@ func TestSingleFileRetZero(t *testing.T) {
 		}
 		return true
 	})
-	results := util.PMap(iter, runSingleFileRetZero, -1)
+	results := util.UnorderedPMap(iter, runSingleFileRetZero, -1)
 
 	for {
 		v, done := results.Next()

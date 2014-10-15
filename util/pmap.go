@@ -17,7 +17,7 @@ func (it *chanCountIter) Next() (interface{}, bool) {
 	return v, false
 }
 
-func PMap(it Iterator, transform func(v interface{}) interface{}, poolSize int) Iterator {
+func UnorderedPMap(it Iterator, transform func(v interface{}) interface{}, poolSize int) Iterator {
 
 	if poolSize <= 0 {
 		poolSize = runtime.NumCPU()

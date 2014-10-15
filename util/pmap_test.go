@@ -4,10 +4,10 @@ import (
 	"testing"
 )
 
-func TestPMap(t *testing.T) {
+func TesUnoreredPMap(t *testing.T) {
 	arr := [...]int{1, 2}
 	it := CreateIterator(arr)
-	it = PMap(it, func(i interface{}) interface{} { return i }, -1)
+	it = UnorderedPMap(it, func(i interface{}) interface{} { return i }, -1)
 	v, done := it.Next()
 	if v.(int) != 1 && done != false {
 		t.Errorf("bad values %v %v", v, done)
