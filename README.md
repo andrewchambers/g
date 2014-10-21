@@ -60,7 +60,7 @@ type u union {
 }
 ```
 
-Simple type inference
+Simple type inference:
 
 ```
 type s struct {
@@ -73,6 +73,12 @@ type s struct {
 var v = &s{x : 0 , y :1}
 
 ```
+Saner left to right declaration syntax.
+```
+// X is a function pointer which takes an int and a byte and returns a pointer to an array of 32 ints.
+ var x func (int,byte) *[32]int
+```
+
 
 # Status
 
