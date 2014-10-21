@@ -108,41 +108,7 @@ Saner left to right declaration syntax:
  var x func (int,byte) *[32]int
 ```
 
-
-# Status
-
-For a general idea of what currently works, look inside the gtestcases folder.
-
-# Build and test:
-[![Build Status](https://travis-ci.org/andrewchambers/g.svg?branch=master)](https://travis-ci.org/andrewchambers/g)
-
-install clang then run:
-
-```
-go get github.com/andrewchambers/g
-cd $GOPATH/src/andrewchambers/g
-go test ./...
-```
-
-# brain storm
-
-* gfmt tool.
-* Package layouts like go.
-* Multiple return values are just syntatic sugar over hidden pointer args. This allows C abi compatibility.
-* Go style exports with case. But can be overridden with private or public keywords to allow c interop.
-* Tagged unions supported explicitly
-* No implicit casts like go.
-* Less memory safety than go - can access arbitrary addresses.
-* Directly output LLVM text assembly.
-* support for inline assembly
-* no := syntax. it does save alot of typing. var x = is probably less confusing to new people and less redundant.
-* Bounds checking on arrays? optional or not?
-* Macros as invoked subprograms? avoids needing special dsl, just a specified data format etc.
-* Tuples + destructuring for multiple return?
-
-
-
-# Brainstorm examples
+# Tentative examples
 Tagged union perhaps? might be too much, when people can just do it themselves.
 The problem this solves is explicitly catching all cases if requirements change.
 ```
@@ -177,18 +143,53 @@ The problem this solves is explicitly catching all cases if requirements change.
 
 ```
 
-Switch case on enums? Solves the problem above but is more general.
+Switch case on enums? Solves the problem above but is more general.:
 
-type NodeType enum {
+```
+type MyEnumType enum {
             X
             Y
             Z
 }
 
-var v = NodeType{X}
+var v = MyEnumType{X}
 
 // Error catches unhandled enum cases.
 switch v {
     case X,Y:
     case Z:
 }
+
+```
+
+# Status
+
+For a general idea of what currently works, look inside the gtestcases folder.
+
+# Build and test:
+[![Build Status](https://travis-ci.org/andrewchambers/g.svg?branch=master)](https://travis-ci.org/andrewchambers/g)
+
+install clang then run:
+
+```
+go get github.com/andrewchambers/g
+cd $GOPATH/src/andrewchambers/g
+go test ./...
+```
+
+# brain storm
+
+* gfmt tool.
+* Package layouts like go.
+* Multiple return values are just syntatic sugar over hidden pointer args. This allows C abi compatibility.
+* Go style exports with case. But can be overridden with private or public keywords to allow c interop.
+* Tagged unions supported explicitly
+* No implicit casts like go.
+* Less memory safety than go - can access arbitrary addresses.
+* Directly output LLVM text assembly.
+* support for inline assembly
+* no := syntax. it does save alot of typing. var x = is probably less confusing to new people and less redundant.
+* Bounds checking on arrays? optional or not?
+* Macros as invoked subprograms? avoids needing special dsl, just a specified data format etc.
+* Tuples + destructuring for multiple return?
+
