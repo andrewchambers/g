@@ -73,7 +73,7 @@ type s struct {
 var v = &s{x : 0 , y :1}
 
 ```
-Saner left to right declaration syntax.
+Saner left to right declaration syntax:
 ```
 // x is a function pointer which takes an int and a byte and returns a pointer to an array of 32 ints.
  var x func (int,byte) *[32]int
