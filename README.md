@@ -84,8 +84,10 @@ func doSomething () (int,*char) {
     if p == nil {
         return -1,"malloc failed"
     }
-    //Free will now execute on any return.
-    defer free((*void)p)
+    //After a defer block is executed, the contained block will run once on function return.
+    defer {
+        free((*void)p)
+    }
     
     if cond() {
         return 0,""
