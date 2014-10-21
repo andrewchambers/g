@@ -19,7 +19,7 @@ And more.
 
 G is not trying to compete with big languages like rust or C++. It just trying to be as close to C as possible while mostly simplifying, and improving things. It is still just portable assembly.
 
-# Examples:
+# Examples (not all implemented):
 
 
 Hello world:
@@ -73,6 +73,18 @@ type s struct {
 var v = &s{x : 0 , y :1}
 
 ```
+Tuple types and simple destructuring:
+```
+    var x = 1,2 // x is a tuple
+    ...
+    var x,y = 1,2 // x and y are destructured
+    ...
+    var x,y (int,byte) = 1,2 // explicit typing of tuple
+    ...
+    var x = (1,"foo")
+    var y = x[1] // y is now type *char
+```
+
 Saner left to right declaration syntax:
 ```
 // x is a function pointer which takes an int and a byte and returns a pointer to an array of 32 ints.
