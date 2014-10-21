@@ -34,6 +34,23 @@ func main() int {
 }
 ```
 
+Switch Improvements:
+
+```
+switch {
+    case strcmp(s,"foo") == 0:
+    case strcmp(s,"bar") == 0:
+    default:
+}
+
+// Errors on duplicated cases.
+switch v {
+    case 0,1,2:
+    case 4..10:
+    default:
+}
+
+```
 
 Multiple return:
 
@@ -122,3 +139,56 @@ go test ./...
 * Bounds checking on arrays? optional or not?
 * Macros as invoked subprograms? avoids needing special dsl, just a specified data format etc.
 * Tuples + destructuring for multiple return?
+
+
+
+# Brainstorm examples
+Tagged union perhaps? might be too much, when people can just do it themselves.
+The problem this solves is explicitly catching all cases if requirements change.
+```
+ 
+ type ASTNode tunion {
+     
+     x struct {
+        foo int
+     }
+     
+     y struct {
+        bar int
+     }
+     
+     z struct {
+        baz int
+     }
+ }
+ 
+ 
+ var v ASTNode = x{}
+ 
+ // Catches unhandled cases with compiler error.
+ match v {
+    case x:
+        v.foo
+    case y:
+        v.bar
+    case z:
+        v.baz
+ }
+
+```
+
+Switch case on enums? Solves the problem above but is more general.
+
+type NodeType enum {
+            X
+            Y
+            Z
+}
+
+var v = NodeType{X}
+
+// Error catches unhandled enum cases.
+switch v {
+    case X,Y:
+    case Z:
+}
