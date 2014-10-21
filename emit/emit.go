@@ -5,21 +5,18 @@ import (
 	"fmt"
 	"github.com/andrewchambers/g/parse"
 	"github.com/andrewchambers/g/target"
-	"strings"
 )
 
 type emitter struct {
 	machine target.TargetMachine
 
-	gscope    *scope
-	curscope  *scope
-	symbolMap map[parse.Node]symbol
-	out       *bufio.Writer
+	out *bufio.Writer
 
 	llvmNameCounter  uint
 	llvmLabelCounter uint
 	curFuncType      *GFunc
 
+	symbolMap map[parse.Node]symbol
 	// Have we emitted any instructions into
 	// The current basic block?
 	isCurBlockEmpty bool
@@ -87,11 +84,9 @@ func (c *boolConstant) getGType() GType {
 func newEmitter(m target.TargetMachine, out *bufio.Writer) *emitter {
 	ret := &emitter{}
 	ret.machine = m
-	ret.curscope = newScope(nil)
-	ret.gscope = ret.curscope
 	ret.out = out
+	// This will be overwritten with the correct info later.
 	ret.symbolMap = make(map[parse.Node]symbol)
-	ret.addBuiltinTypes()
 	return ret
 }
 
@@ -105,32 +100,6 @@ func (e *emitter) newLLVMName() string {
 	ret := fmt.Sprintf("%%%d", e.llvmNameCounter)
 	e.llvmNameCounter++
 	return ret
-}
-
-func (e *emitter) addBuiltinTypes() {
-	// Built in types
-	e.curscope.declareType("bool", builtinBoolGType)
-	e.curscope.declareType("int", getDefaultIntType(e.machine))
-	e.curscope.declareType("int8", builtinInt8GType)
-	e.curscope.declareType("int16", builtinInt16GType)
-	e.curscope.declareType("int32", builtinInt32GType)
-	e.curscope.declareType("int64", builtinInt64GType)
-	e.curscope.declareType("uint", builtinUInt64GType)
-	e.curscope.declareType("uint8", builtinUInt8GType)
-	e.curscope.declareType("uint16", builtinUInt16GType)
-	e.curscope.declareType("uint32", builtinUInt32GType)
-	e.curscope.declareType("uint64", builtinUInt64GType)
-	// Built in symbols
-	e.curscope.declareSym("true", &constSymbol{&boolConstant{true}, nil})
-	e.curscope.declareSym("false", &constSymbol{&boolConstant{true}, nil})
-}
-
-func (e *emitter) pushScope() {
-	e.curscope = newScope(e.curscope)
-}
-
-func (e *emitter) popScope() {
-	e.curscope = e.curscope.parent
 }
 
 func (e *emitter) emit(s string, args ...interface{}) {
@@ -157,10 +126,12 @@ func (e *emitter) emitl(l string) {
 
 func EmitModule(machine target.TargetMachine, out *bufio.Writer, file *parse.File) error {
 	e := newEmitter(machine, out)
-	err := e.collectGlobalSymbols(file)
+
+	symMap, err := resolveASTSymbols(file)
 	if err != nil {
 		return err
 	}
+	e.symbolMap = symMap
 
 	e.emitPrelude()
 
@@ -181,56 +152,21 @@ func (e *emitter) emitPrelude() {
 }
 
 func (e *emitter) handleFuncPrologue(fd *parse.FuncDecl) error {
-	for idx, arg := range fd.ArgNames {
-		ty := fd.ArgTypes[idx]
-		gty, err := e.parseNodeToGType(ty)
-		if err != nil {
-			return err
+	/*
+		for idx, arg := range fd.ArgNames {
+			ty := fd.ArgTypes[idx]
+			gty, err := e.parseNodeToGType(ty)
+			if err != nil {
+				return err
+			}
+			llname := e.newLLVMName()
+			v := &exprValue{}
+			v.gType = gty
+			v.llvmName = "%" + arg
+			e.emiti("%s = alloca %s\n", llname, gTypeToLLVM(gty))
+			e.emitStore(llname, v)
 		}
-		llname := e.newLLVMName()
-		v := &exprValue{}
-		v.gType = gty
-		v.llvmName = "%" + arg
-		e.emiti("%s = alloca %s\n", llname, gTypeToLLVM(gty))
-		e.emitStore(llname, v)
-		s := &localSymbol{
-			alloca: llname,
-			gType:  gty,
-			defPos: fd.Span.Start,
-		}
-		e.curscope.declareSym(arg, s)
-	}
-	return nil
-}
-
-func (e *emitter) collectGlobalSymbols(file *parse.File) error {
-	for _, imp := range file.Imports {
-		impdef := imp.Val[1 : len(imp.Val)-1]
-		impdef = strings.Split(impdef, "/")[0]
-		sym := newGlobalSymbol(imp.Span.Start)
-		err := e.curscope.declareSym(impdef, sym)
-		if err != nil {
-			return fmt.Errorf("bad import: %s %s:%v", err, imp.Span.Path, imp.Span.Start)
-		}
-	}
-	for _, fd := range file.FuncDecls {
-		ty, err := e.funcDeclToGType(fd)
-		if err != nil {
-			return err
-		}
-		sym := newGlobalFuncSymbol(ty, fd.Span.Start)
-		err = e.curscope.declareSym(fd.Name, sym)
-		if err != nil {
-			return fmt.Errorf("bad func decl: %s %s:%v", err, fd.Span.Path, fd.Span.Start)
-		}
-	}
-	for _, vd := range file.VarDecls {
-		sym := newGlobalSymbol(vd.Span.Start)
-		err := e.curscope.declareSym(vd.Name, sym)
-		if err != nil {
-			return fmt.Errorf("bad var decl: %s %s:%v", err, vd.Span.Path, vd.Span.Start)
-		}
-	}
+	*/
 	return nil
 }
 
@@ -258,10 +194,6 @@ func (e *emitter) emitFuncDecl(f *parse.FuncDecl) error {
 	llvmRetTy = gTypeToLLVM(rty)
 	e.emit("define %s @%s( %s ) {\n", llvmRetTy, f.Name, args)
 	e.emitl(".entry")
-	err = e.resolveSymbols(f)
-	if err != nil {
-		return err
-	}
 	for _, stmt := range f.Body {
 		err = e.emitStatement(stmt)
 		if err != nil {
@@ -1019,8 +951,11 @@ func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
 	//span := n.GetSpan()
 	switch n := n.(type) {
 	case *parse.TypeAlias:
-		ret, err := e.curscope.lookupType(n.Name)
-		return ret, err
+		/*
+			ret, err := e.curscope.lookupType(n.Name)
+			return ret, err
+		*/
+		return nil, fmt.Errorf("foo\n")
 	case *parse.PointerTo:
 		t, err := e.parseNodeToGType(n.PointsTo)
 		if err != nil {
