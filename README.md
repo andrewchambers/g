@@ -17,7 +17,7 @@ G aims to...
 
 And more.
 
-G is not trying to compete with big languages like rust or C++. It just trying to be as close to C as possible while mostly simplifying, and improving things.
+G is not trying to compete with big languages like rust or C++. It just trying to be as close to C as possible while mostly simplifying, and improving things. It is still just portable assembly.
 
 Example:
 
