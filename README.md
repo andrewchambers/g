@@ -77,26 +77,6 @@ type u union {
 }
 ```
 
-Deferred cleanup:
-```
-func doSomething () (int,*char) {
-    var p *Foo = malloc(sizeof(Foo))
-    if p == nil {
-        return -1,"malloc failed"
-    }
-    //After a defer block is executed, the contained block will run once on function return.
-    defer {
-        free((*void)p)
-    }
-    
-    if cond() {
-        return 0,""
-    }
-    
-    return 1,""
-}
-```
-
 Simple type inference:
 
 ```
@@ -180,6 +160,26 @@ switch v {
     case Z:
 }
 
+```
+
+Deferred cleanup:
+```
+func doSomething () (int,*char) {
+    var p *Foo = malloc(sizeof(Foo))
+    if p == nil {
+        return -1,"malloc failed"
+    }
+    //After a defer block is executed, the contained block will run once on function return.
+    defer {
+        free((*void)p)
+    }
+    
+    if cond() {
+        return 0,""
+    }
+    
+    return 1,""
+}
 ```
 
 # Status
