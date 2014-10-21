@@ -77,6 +77,24 @@ type u union {
 }
 ```
 
+Deferred cleanup:
+```
+func doSomething () (int,*char) {
+    var p *Foo = malloc(sizeof(Foo))
+    if p == nil {
+        return -1,"malloc failed"
+    }
+    //Free will now execute on any return.
+    defer free((*void)p)
+    
+    if cond() {
+        return 0,""
+    }
+    
+    return 1,""
+}
+```
+
 Simple type inference:
 
 ```
