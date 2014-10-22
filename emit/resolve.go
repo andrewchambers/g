@@ -2,35 +2,40 @@ package emit
 
 import (
 	"fmt"
+	"strings"
 	"github.com/andrewchambers/g/parse"
+	"github.com/andrewchambers/g/target"
 )
+
+type symbolTable map[parse.Node]symbol
 
 type symbolResolver struct {
 	gscope    *scope
 	curscope  *scope
-	symbolMap map[parse.Node]symbol
+	symbols map[parse.Node]symbol
 }
+
+
 
 //XXX rename all variables from e
 
-func resolveASTSymbols(n parse.Node) (map[parse.Node]symbol, error) {
+func resolveASTSymbols(machine target.TargetMachine,n parse.Node) (symbolTable, error) {
 	sr := &symbolResolver{}
 	sr.gscope = newScope(nil)
 	sr.curscope = sr.gscope
-
-	sr.addBuiltinTypes()
-
+    sr.symbols = make(symbolTable)
+	addBuiltinTypes(machine,sr)
 	err := sr.resolveSymbols(n)
 	if err != nil {
-		return make(map[parse.Node]symbol), err
+		return make(symbolTable), err
 	}
-	return sr.symbolMap, nil
+	return sr.symbols, nil
 }
 
-func (e *symbolResolver) addBuiltinTypes() {
+func addBuiltinTypes(machine target.TargetMachine,e *symbolResolver) {
 	// Built in types
 	e.curscope.declareType("bool", builtinBoolGType)
-	e.curscope.declareType("int", getDefaultIntType(e.machine))
+	e.curscope.declareType("int", getDefaultIntType(machine))
 	e.curscope.declareType("int8", builtinInt8GType)
 	e.curscope.declareType("int16", builtinInt16GType)
 	e.curscope.declareType("int32", builtinInt32GType)
@@ -88,10 +93,7 @@ func (e *symbolResolver) resolveSymbols(n parse.Node) error {
 	switch n := n.(type) {
 	case *parse.FuncDecl:
 		e.pushScope()
-		err := e.handleFuncPrologue(n)
-		if err != nil {
-			return err
-		}
+		//XXX declare function name and other symbols...
 		e.pushScope()
 		for _, subn := range n.Body {
 			err := e.resolveSymbols(subn)
@@ -208,7 +210,7 @@ func (e *symbolResolver) resolveSymbols(n parse.Node) error {
 		if err != nil {
 			return fmt.Errorf("%s at %s:%s", err, n.Span.Path, n.Span.Start)
 		}
-		e.symbolMap[n] = sym
+		e.symbols[n] = sym
 	case *parse.ExpressionStatement:
 		err := e.resolveSymbols(n.Expr)
 		if err != nil {
@@ -227,14 +229,7 @@ func (e *symbolResolver) resolveLocalVarDecl(vd *parse.VarDecl) error {
 	if err != nil {
 		return err
 	}
-	name := e.newLLVMName()
-	e.emiti("%s = alloca %s\n", name, gTypeToLLVM(t))
-	err = e.emitZeroMem(name, t)
-	if err != nil {
-		return err
-	}
 	s := &localSymbol{
-		alloca: name,
 		gType:  t,
 		defPos: vd.Span.Start,
 	}
@@ -247,3 +242,72 @@ func (e *symbolResolver) resolveLocalVarDecl(vd *parse.VarDecl) error {
 	}
 	return err
 }
+
+func (e *symbolResolver) funcDeclToGType(f *parse.FuncDecl) (*GFunc, error) {
+	ret := &GFunc{}
+	for _, t := range f.ArgTypes {
+		gty, err := e.parseNodeToGType(t)
+		if err != nil {
+			return nil, err
+		}
+		ret.ArgTypes = append(ret.ArgTypes, gty)
+	}
+	if f.RetType != nil {
+		t, err := e.parseNodeToGType(f.RetType)
+		if err != nil {
+			return nil, err
+		}
+		ret.RetType = t
+	} else {
+		ret.RetType = builtinVoidGType
+	}
+
+	return ret, nil
+}
+
+func (e *symbolResolver) parseNodeToGType(n parse.Node) (GType, error) {
+	//span := n.GetSpan()
+	switch n := n.(type) {
+	case *parse.TypeAlias:
+		/*
+			ret, err := e.curscope.lookupType(n.Name)
+			return ret, err
+		*/
+		return nil, fmt.Errorf("foo\n")
+	case *parse.PointerTo:
+		t, err := e.parseNodeToGType(n.PointsTo)
+		if err != nil {
+			return nil, err
+		}
+		ret := &GPointer{PointsTo: t}
+		return ret, nil
+	case *parse.Struct:
+		return e.parseStructToGType(n)
+	case *parse.ArrayOf:
+		t, err := e.parseNodeToGType(n.SubType)
+		if err != nil {
+			return nil, err
+		}
+		ret := &GArray{}
+		ret.Dim = 12
+		ret.SubType = t
+		return ret, nil
+	default:
+		return nil, fmt.Errorf("invalid type %v", n)
+	}
+
+}
+
+func (e *symbolResolver) parseStructToGType(n *parse.Struct) (GType, error) {
+	ret := &GStruct{}
+	for idx, name := range n.Names {
+		t, err := e.parseNodeToGType(n.Types[idx])
+		if err != nil {
+			return nil, err
+		}
+		ret.Names = append(ret.Names, name)
+		ret.Types = append(ret.Types, t)
+	}
+	return ret, nil
+}
+

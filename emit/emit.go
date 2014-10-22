@@ -16,7 +16,7 @@ type emitter struct {
 	llvmLabelCounter uint
 	curFuncType      *GFunc
 
-	symbolMap map[parse.Node]symbol
+	symbols symbolTable
 	// Have we emitted any instructions into
 	// The current basic block?
 	isCurBlockEmpty bool
@@ -86,7 +86,7 @@ func newEmitter(m target.TargetMachine, out *bufio.Writer) *emitter {
 	ret.machine = m
 	ret.out = out
 	// This will be overwritten with the correct info later.
-	ret.symbolMap = make(map[parse.Node]symbol)
+	ret.symbols = make(symbolTable)
 	return ret
 }
 
@@ -127,11 +127,11 @@ func (e *emitter) emitl(l string) {
 func EmitModule(machine target.TargetMachine, out *bufio.Writer, file *parse.File) error {
 	e := newEmitter(machine, out)
 
-	symMap, err := resolveASTSymbols(file)
+	symMap, err := resolveASTSymbols(machine,file)
 	if err != nil {
 		return err
 	}
-	e.symbolMap = symMap
+	e.symbols = symMap
 
 	e.emitPrelude()
 
@@ -172,18 +172,14 @@ func (e *emitter) handleFuncPrologue(fd *parse.FuncDecl) error {
 
 func (e *emitter) emitFuncDecl(f *parse.FuncDecl) error {
 	//Emit function start
-	ft, err := e.funcDeclToGType(f)
-	if err != nil {
-		return err
+	ft, ok := e.symbols[f].getGType().(*GFunc)
+	if !ok {
+		panic("internal error")
 	}
 	e.curFuncType = ft
 	args := ""
 	for idx, argname := range f.ArgNames {
-		ty := f.ArgTypes[idx]
-		gty, err := e.parseNodeToGType(ty)
-		if err != nil {
-			return err
-		}
+		gty := ft.ArgTypes[idx]
 		args += fmt.Sprintf("%s %%%s", gTypeToLLVM(gty), argname)
 		if idx != len(f.ArgNames)-1 {
 			args += ","
@@ -195,7 +191,7 @@ func (e *emitter) emitFuncDecl(f *parse.FuncDecl) error {
 	e.emit("define %s @%s( %s ) {\n", llvmRetTy, f.Name, args)
 	e.emitl(".entry")
 	for _, stmt := range f.Body {
-		err = e.emitStatement(stmt)
+		err := e.emitStatement(stmt)
 		if err != nil {
 			return err
 		}
@@ -620,14 +616,16 @@ func (e *emitter) emitCall(c *parse.Call) (Value, error) {
 	isGlobalCall := false
 	funcName := ""
 
-	sym, ok := e.symbolMap[c.FuncLike]
+	sym, ok := e.symbols[c.FuncLike]
+    if ok {
+        _,ok = sym.getGType().(*GFunc) 
+    }	
 	if ok {
-		fsym, ok := sym.(*globalFuncSymbol)
 		if ok {
-			funcType = fsym.gType
+			funcType = sym.getGType().(*GFunc)
 			ident, ok := c.FuncLike.(*parse.Ident)
 			if !ok {
-				panic("internal error - non ident in symbol map!")
+				panic("internal error - non ident in global call")
 			}
 			funcName = ident.Val
 			isGlobalCall = true
@@ -701,7 +699,7 @@ func (e *emitter) emitCall(c *parse.Call) (Value, error) {
 }
 
 func (e *emitter) emitIdent(i *parse.Ident) (Value, error) {
-	s, ok := e.symbolMap[i]
+	s, ok := e.symbols[i]
 	if !ok {
 		panic("internal error")
 	}
@@ -923,74 +921,6 @@ func (e *emitter) emitUnop(u *parse.Unop) (Value, error) {
 		}, nil
 	}
 	panic("internal error")
-}
-
-func (e *emitter) funcDeclToGType(f *parse.FuncDecl) (*GFunc, error) {
-	ret := &GFunc{}
-	for _, t := range f.ArgTypes {
-		gty, err := e.parseNodeToGType(t)
-		if err != nil {
-			return nil, err
-		}
-		ret.ArgTypes = append(ret.ArgTypes, gty)
-	}
-	if f.RetType != nil {
-		t, err := e.parseNodeToGType(f.RetType)
-		if err != nil {
-			return nil, err
-		}
-		ret.RetType = t
-	} else {
-		ret.RetType = builtinVoidGType
-	}
-
-	return ret, nil
-}
-
-func (e *emitter) parseNodeToGType(n parse.Node) (GType, error) {
-	//span := n.GetSpan()
-	switch n := n.(type) {
-	case *parse.TypeAlias:
-		/*
-			ret, err := e.curscope.lookupType(n.Name)
-			return ret, err
-		*/
-		return nil, fmt.Errorf("foo\n")
-	case *parse.PointerTo:
-		t, err := e.parseNodeToGType(n.PointsTo)
-		if err != nil {
-			return nil, err
-		}
-		ret := &GPointer{PointsTo: t}
-		return ret, nil
-	case *parse.Struct:
-		return e.parseStructToGType(n)
-	case *parse.ArrayOf:
-		t, err := e.parseNodeToGType(n.SubType)
-		if err != nil {
-			return nil, err
-		}
-		ret := &GArray{}
-		ret.Dim = 12
-		ret.SubType = t
-		return ret, nil
-	default:
-		return nil, fmt.Errorf("invalid type %v", n)
-	}
-
-}
-
-func (e *emitter) parseStructToGType(n *parse.Struct) (GType, error) {
-	ret := &GStruct{}
-	for idx, name := range n.Names {
-		t, err := e.parseNodeToGType(n.Types[idx])
-		if err != nil {
-			return nil, err
-		}
-		ret.Names = append(ret.Names, name)
-		ret.Types = append(ret.Types, t)
-	}
-	return ret, nil
 }
 
 func gTypeToLLVM(t GType) string {
