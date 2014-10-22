@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/andrewchambers/g/driver"
 	"github.com/andrewchambers/g/target"
-	"github.com/andrewchambers/g/util"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -51,8 +50,10 @@ func makeFailedTestResult(name string, err string, args ...interface{}) testResu
 
 const retzerotestdir = "./gtestcases/retzero/singlefile/"
 
-func runSingleFileRetZero(itestpath interface{}) (result interface{}) {
-	testpath := path.Join(retzerotestdir, itestpath.(os.FileInfo).Name())
+func runSingleFileRetZero(t *testing.T, testpath string) (result testResult) {
+	
+	t.Logf("running test %s testpath")
+	
 	// Recover and log failure on panic.
 	defer func() {
 		v := recover()
@@ -113,12 +114,8 @@ func TestSingleFileRetZero(t *testing.T) {
 		t.Fatal("failed to read directory containing single file retzero tests.")
 		return
 	}
-	iter := util.CreateIterator(files)
-	iter = util.FilterIterator(iter, func(v interface{}) bool {
-		info, ok := v.(os.FileInfo)
-		if !ok {
-			panic("unreachable")
-		}
+
+	predicate := func(info os.FileInfo) bool {
 		if info.IsDir() {
 			return false
 		}
@@ -126,17 +123,19 @@ func TestSingleFileRetZero(t *testing.T) {
 			return false
 		}
 		return true
-	})
-	results := util.UnorderedPMap(iter, runSingleFileRetZero, -1)
-
-	for {
-		v, done := results.Next()
-		if done {
-			break
-		}
-		tr := v.(testResult)
-		if tr.err != nil {
-			t.Errorf("Failed %s %s", tr.name, tr.err)
-		}
 	}
+	
+	for _,info := range files {
+	    if !predicate(info) {
+	        continue
+	    }
+	    
+	    tr := runSingleFileRetZero(t,path.Join(retzerotestdir, testInfo.Name()))
+	    
+	    if tr.err != nil {
+	        t.Errorf("%s failed. %s",tr.name,tr.err)
+	    }
+	    
+	}
+		
 }
