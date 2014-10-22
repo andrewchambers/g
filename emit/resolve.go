@@ -15,8 +15,6 @@ type symbolResolver struct {
 	symbols map[parse.Node]symbol
 }
 
-
-
 //XXX rename all variables from e
 
 func resolveASTSymbols(machine target.TargetMachine,n parse.Node) (symbolTable, error) {

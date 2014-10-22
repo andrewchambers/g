@@ -88,7 +88,7 @@ func main() {
 			fmt.Println("parsing failed.")
 			os.Exit(1)
 		}
-		fmt.Fprintln(output, ast.Dump(0))
+		fmt.Printf("%#v\n", ast)
 	} else {
 		t := target.GetTarget()
 		err := driver.CompileFileToLLVM(t, input, output)
