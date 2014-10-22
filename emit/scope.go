@@ -20,7 +20,6 @@ type symbol interface {
 }
 
 type localSymbol struct {
-	alloca string
 	gType  GType
 	defPos parse.FilePos
 }

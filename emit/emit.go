@@ -706,7 +706,6 @@ func (e *emitter) emitIdent(i *parse.Ident) (Value, error) {
 	switch s := s.(type) {
 	case *localSymbol:
 		ret := &exprValue{
-			llvmName: s.alloca,
 			lval:     true,
 			gType:    s.getGType(),
 		}
