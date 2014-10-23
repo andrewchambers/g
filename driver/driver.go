@@ -39,7 +39,7 @@ func ParseFile(sourceFile string) (*parse.File, error) {
 	tokChan := parse.Lex(sourceFile, f)
 	ast, err := parse.Parse(tokChan)
 	if err != nil {
-		return nil, fmt.Errorf("parse error: %s\n", err)
+		return nil, fmt.Errorf("parse error: %s", err)
 	}
 	return ast, nil
 }

@@ -127,7 +127,7 @@ func (e *emitter) emitl(l string) {
 func EmitModule(machine target.TargetMachine, out *bufio.Writer, file *parse.File) error {
 	e := newEmitter(machine, out)
 
-	symMap, err := resolveASTSymbols(machine,file)
+	symMap, err := resolveASTSymbols(machine, file)
 	if err != nil {
 		return err
 	}
@@ -617,9 +617,9 @@ func (e *emitter) emitCall(c *parse.Call) (Value, error) {
 	funcName := ""
 
 	sym, ok := e.symbols[c.FuncLike]
-    if ok {
-        _,ok = sym.getGType().(*GFunc) 
-    }	
+	if ok {
+		_, ok = sym.getGType().(*GFunc)
+	}
 	if ok {
 		if ok {
 			funcType = sym.getGType().(*GFunc)
@@ -706,8 +706,8 @@ func (e *emitter) emitIdent(i *parse.Ident) (Value, error) {
 	switch s := s.(type) {
 	case *localSymbol:
 		ret := &exprValue{
-			lval:     true,
-			gType:    s.getGType(),
+			lval:  true,
+			gType: s.getGType(),
 		}
 		return ret, nil
 	case *constSymbol:

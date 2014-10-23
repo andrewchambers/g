@@ -18,6 +18,7 @@ const (
 	IDENTIFIER
 	VAR
 	CONST
+	ELLIPSIS
 	TYPE
 	IF
 	BREAK
@@ -80,6 +81,7 @@ func (k TokenKind) String() string {
 		OR:         "||",
 		LSHIFT:     "<<",
 		RSHIFT:     ">>",
+		ELLIPSIS:   "...",
 	}
 	s, ok := lut[k]
 	if ok {

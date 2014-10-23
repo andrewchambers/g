@@ -51,9 +51,9 @@ func makeFailedTestResult(name string, err string, args ...interface{}) testResu
 const retzerotestdir = "./gtestcases/retzero/singlefile/"
 
 func runSingleFileRetZero(t *testing.T, testpath string) (result testResult) {
-	
+
 	t.Logf("running test %s testpath")
-	
+
 	// Recover and log failure on panic.
 	defer func() {
 		v := recover()
@@ -124,18 +124,18 @@ func TestSingleFileRetZero(t *testing.T) {
 		}
 		return true
 	}
-	
-	for _,info := range files {
-	    if !predicate(info) {
-	        continue
-	    }
-	    
-	    tr := runSingleFileRetZero(t,path.Join(retzerotestdir, testInfo.Name()))
-	    
-	    if tr.err != nil {
-	        t.Errorf("%s failed. %s",tr.name,tr.err)
-	    }
-	    
+
+	for _, info := range files {
+		if !predicate(info) {
+			continue
+		}
+
+		tr := runSingleFileRetZero(t, path.Join(retzerotestdir, testInfo.Name()))
+
+		if tr.err != nil {
+			t.Errorf("%s failed. %s", tr.name, tr.err)
+		}
+
 	}
-		
+
 }

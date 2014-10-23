@@ -1,6 +1,5 @@
 package parse
 
-
 type Node interface {
 	GetSpan() FileSpan
 }
@@ -138,6 +137,7 @@ type FuncDecl struct {
 	SpanProvider
 	Name     string
 	RetType  Node
+	isVarArg bool
 	ArgNames []string
 	ArgTypes []Node
 	Body     []Node
@@ -194,4 +194,3 @@ func (n *FuncDecl) addArgument(name string, t Node) {
 func (n *FuncDecl) addStatement(s Node) {
 	n.Body = append(n.Body, s)
 }
-

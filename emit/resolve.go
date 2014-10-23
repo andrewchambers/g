@@ -2,27 +2,27 @@ package emit
 
 import (
 	"fmt"
-	"strings"
 	"github.com/andrewchambers/g/parse"
 	"github.com/andrewchambers/g/target"
+	"strings"
 )
 
 type symbolTable map[parse.Node]symbol
 
 type symbolResolver struct {
-	gscope    *scope
-	curscope  *scope
-	symbols map[parse.Node]symbol
+	gscope   *scope
+	curscope *scope
+	symbols  map[parse.Node]symbol
 }
 
 //XXX rename all variables from e
 
-func resolveASTSymbols(machine target.TargetMachine,n parse.Node) (symbolTable, error) {
+func resolveASTSymbols(machine target.TargetMachine, n parse.Node) (symbolTable, error) {
 	sr := &symbolResolver{}
 	sr.gscope = newScope(nil)
 	sr.curscope = sr.gscope
-    sr.symbols = make(symbolTable)
-	addBuiltinTypes(machine,sr)
+	sr.symbols = make(symbolTable)
+	addBuiltinTypes(machine, sr)
 	err := sr.resolveSymbols(n)
 	if err != nil {
 		return make(symbolTable), err
@@ -30,7 +30,7 @@ func resolveASTSymbols(machine target.TargetMachine,n parse.Node) (symbolTable, 
 	return sr.symbols, nil
 }
 
-func addBuiltinTypes(machine target.TargetMachine,e *symbolResolver) {
+func addBuiltinTypes(machine target.TargetMachine, e *symbolResolver) {
 	// Built in types
 	e.curscope.declareType("bool", builtinBoolGType)
 	e.curscope.declareType("int", getDefaultIntType(machine))
@@ -308,4 +308,3 @@ func (e *symbolResolver) parseStructToGType(n *parse.Struct) (GType, error) {
 	}
 	return ret, nil
 }
-

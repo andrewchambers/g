@@ -165,7 +165,22 @@ func (l *lexer) lex() {
 			case '}':
 				l.sendTok('}', "}")
 			case '.':
-				l.sendTok('.', ".")
+				next, _ := l.readRune()
+				switch next {
+				case '.':
+					next, _ := l.readRune()
+					if next == '.' {
+						l.sendTok(ELLIPSIS, "...")
+					} else {
+						l.unreadRune()
+						// Parser will pick up obvious error.
+						l.sendTok('.', ".")
+						l.sendTok('.', ".")
+					}
+				default:
+					l.unreadRune()
+					l.sendTok('.', ".")
+				}
 			case '"':
 				l.unreadRune()
 				l.readStringLiteral()

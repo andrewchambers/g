@@ -232,6 +232,11 @@ func (p *parser) parseArgList(f *FuncDecl) {
 			p.next()
 		}
 	}
+
+	if p.curTok.Kind == ELLIPSIS {
+		p.next()
+		f.isVarArg = true
+	}
 }
 
 func (p *parser) parseConst() {
