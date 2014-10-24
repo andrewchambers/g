@@ -1,5 +1,10 @@
 package parse
 
+import (
+	"fmt"
+	"io"
+)
+
 type Node interface {
 	GetSpan() FileSpan
 }
@@ -193,4 +198,50 @@ func (n *FuncDecl) addArgument(name string, t Node) {
 
 func (n *FuncDecl) addStatement(s Node) {
 	n.Body = append(n.Body, s)
+}
+
+func DebugDump(w io.Writer, n Node) {
+	debugDump(0, w, n)
+}
+
+func debugDump(d int, w io.Writer, n Node) {
+
+	// XXX
+	ws := func(c int) string {
+		ret := ""
+		for i := 0; i < c; i++ {
+			ret += " "
+		}
+		return ret
+	}
+
+	p := func(d int, format string, args ...interface{}) {
+		fmt.Fprintf(w, ws(d)+format, args...)
+	}
+
+	switch n := n.(type) {
+	case *File:
+		p(d+0, "File:\n")
+		p(d+2, "FuncDecls:\n")
+		for _, fd := range n.FuncDecls {
+			debugDump(d+4, w, fd)
+		}
+	case *FuncDecl:
+		p(d+0, "FuncDecl:\n")
+		p(d+2, "Name: %s\n", n.Name)
+		p(d+2, "Body:\n")
+		for _, n := range n.Body {
+			debugDump(d+4, w, n)
+		}
+	case *ExpressionStatement:
+		p(d+0, "ExpressionStatement:\n")
+		debugDump(d+2, w, n.Expr)
+	case *Unop:
+		p(d+0, "Unop: %s\n", n.Op)
+		debugDump(d+2, w, n.Expr)
+	case *Call:
+		p(d+0, "Call:\n")
+	default:
+		p(d+0, "unhandled: %T\n", n)
+	}
 }

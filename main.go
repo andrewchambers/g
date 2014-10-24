@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/andrewchambers/g/driver"
+	"github.com/andrewchambers/g/parse"
 	"github.com/andrewchambers/g/target"
 	"io"
 	"os"
@@ -88,7 +89,7 @@ func main() {
 			fmt.Println("parsing failed.")
 			os.Exit(1)
 		}
-		fmt.Printf("%#v\n", ast)
+		parse.DebugDump(output, ast)
 	} else {
 		t := target.GetTarget()
 		err := driver.CompileFileToLLVM(t, input, output)

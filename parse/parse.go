@@ -509,7 +509,15 @@ func (p *parser) parsePrimaryExpression() Node {
 
 	var ret Node = nil
 
-	if p.curTok.Kind == '&' || p.curTok.Kind == '*' || p.curTok.Kind == '-' {
+	switch p.curTok.Kind {
+	case FUNC, STRUCT, '[':
+		// Resolve is going to need to deal with converting Unop * to ptr.
+		// Resolve also has to deal with the ambiguity of *foo(bar)
+		// If foo is a type, its a cast, else its a call.
+		// Confirmed for type cast, parse the type.
+		ty := p.parseType(false)
+		ret = ty
+	case '&', '*', '-':
 		newu := &Unop{}
 		newu.Op = p.curTok.Kind
 		newu.Span = p.curTok.Span
@@ -518,33 +526,30 @@ func (p *parser) parsePrimaryExpression() Node {
 		newu.Expr = expr
 		newu.Span.End = expr.GetSpan().End
 		ret = newu
-	} else {
-		switch p.curTok.Kind {
-		case IDENTIFIER:
-			v := &Ident{}
-			v.Val = p.curTok.Val
-			v.Span = p.curTok.Span
-			p.next()
-			ret = v
-		case CONSTANT:
-			v := &Constant{}
-			c, err := tokToInt64(p.curTok)
-			if err != nil {
-				p.syntaxError(err.Error(), p.curTok.Span)
-			}
-			v.Val = c
-			v.Span = p.curTok.Span
-			p.next()
-			ret = v
-		case STRING:
-			ret = p.parseString()
-		case '(':
-			p.expect('(')
-			ret = p.parseExpression()
-			p.expect(')')
-		default:
-			p.syntaxError("error parsing expression", p.curTok.Span)
+	case IDENTIFIER:
+		v := &Ident{}
+		v.Val = p.curTok.Val
+		v.Span = p.curTok.Span
+		p.next()
+		ret = v
+	case CONSTANT:
+		v := &Constant{}
+		c, err := tokToInt64(p.curTok)
+		if err != nil {
+			p.syntaxError(err.Error(), p.curTok.Span)
 		}
+		v.Val = c
+		v.Span = p.curTok.Span
+		p.next()
+		ret = v
+	case STRING:
+		ret = p.parseString()
+	case '(':
+		p.expect('(')
+		ret = p.parseExpression()
+		p.expect(')')
+	default:
+		p.syntaxError("error parsing expression", p.curTok.Span)
 	}
 
 loop:
