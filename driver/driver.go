@@ -18,7 +18,8 @@ func TokenizeFile(sourceFile string, out io.WriteCloser) error {
 	if err != nil {
 		return fmt.Errorf("Failed to open source file %s for lexing: %s\n", sourceFile, err)
 	}
-	tokChan := parse.Lex(sourceFile, f)
+	defer f.Close()
+	tokChan, _ := parse.Lex(sourceFile, f)
 	for tok := range tokChan {
 		if tok == nil {
 			return nil
@@ -31,12 +32,32 @@ func TokenizeFile(sourceFile string, out io.WriteCloser) error {
 	return nil
 }
 
+func GetPackageName(sourceFile string) (string, error) {
+	f, err := os.Open(sourceFile)
+	if err != nil {
+		return "", fmt.Errorf("Failed to open source file %s for lexing: %s\n", sourceFile, err)
+	}
+	tokChan, cancel := parse.Lex(sourceFile, f)
+	defer func() {
+		cancel <- struct{}{}
+	}()
+	tok := <-tokChan
+	if tok == nil || tok.Kind != parse.PACKAGE {
+		return "", fmt.Errorf("malformed package statement")
+	}
+	tok = <-tokChan
+	if tok == nil || tok.Kind != parse.IDENTIFIER {
+		return "", fmt.Errorf("malformed package name")
+	}
+	return tok.Val, nil
+}
+
 func ParseFile(sourceFile string) (*parse.File, error) {
 	f, err := os.Open(sourceFile)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open source file %s for lexing: %s\n", sourceFile, err)
 	}
-	tokChan := parse.Lex(sourceFile, f)
+	tokChan, _ := parse.Lex(sourceFile, f)
 	ast, err := parse.Parse(tokChan)
 	if err != nil {
 		return nil, fmt.Errorf("parse error: %s", err)

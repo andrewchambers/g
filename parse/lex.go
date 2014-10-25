@@ -15,17 +15,19 @@ type lexer struct {
 	markedPos FilePos
 	// The io source the lexer is reading for.
 	brdr *bufio.Reader
-	// Current position information
+	// Current position information.
 	curLine int
 	curCol  int
-	//Position information saved for unreads sake
+	//Position information saved for unreads sake.
 	prevLine int
 	prevCol  int
 	// Path of current file (used for errors and other position info).
 	path string
 	// Output only channel for sending tokens.
-	out chan *Token
-	//Set to true if we have hit eof
+	out chan<- *Token
+	// cancel lexing.
+	cancel <-chan struct{}
+	//Set to true if we have hit eof.
 	eof bool
 	// Set to true if the last token emitted was one of the semicolon hack tokens.
 	// This is what allows g to omit semicolons when they would otherwise be needed.
@@ -35,8 +37,10 @@ type lexer struct {
 // Lexers the reader in a goroutine.
 // The goroutine must be read until completion or error.
 // The Error token is returned on lex error.
-func Lex(path string, r io.Reader) chan *Token {
+// returns a token channel, and a cancel channel.
+func Lex(path string, r io.Reader) (<-chan *Token, chan<- struct{}) {
 	out := make(chan *Token, 1024)
+	cancel := make(chan struct{}, 1)
 	l := new(lexer)
 	l.brdr = bufio.NewReader(r)
 	l.path = path
@@ -45,8 +49,9 @@ func Lex(path string, r io.Reader) chan *Token {
 	l.prevLine = 1
 	l.prevCol = 1
 	l.out = out
+	l.cancel = cancel
 	go l.lex()
-	return out
+	return out, cancel
 }
 
 // Saves the current lexer position in markedPos.
@@ -73,7 +78,14 @@ func (l *lexer) sendTok(k TokenKind, val string) {
 	} else {
 		l.semiHack = false
 	}
-	l.out <- &Token{k, val, FileSpan{l.path, l.markedPos, l.currentPos()}}
+
+	t := &Token{k, val, FileSpan{l.path, l.markedPos, l.currentPos()}}
+	select {
+	case l.out <- t:
+	case <-l.cancel:
+		panic(&breakout{})
+	}
+
 }
 
 // Panics with aborting error type, does not return

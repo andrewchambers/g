@@ -8,7 +8,7 @@ import (
 type parser struct {
 	curTok  *Token
 	nextTok *Token
-	c       chan *Token
+	c       <-chan *Token
 	ast     *File
 	err     error
 }
@@ -17,7 +17,7 @@ func ParsePackage() (*Package, error) {
 	return nil, nil
 }
 
-func Parse(c chan *Token) (*File, error) {
+func Parse(c <-chan *Token) (*File, error) {
 	//Read channel until empty incase of errors
 	defer func() {
 		for {
