@@ -72,9 +72,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed to open output file %s\n", err)
 			os.Exit(1)
 		}
+		defer output.Close()
 	}
-	defer output.Close()
-
 	if *tokenizeOnly {
 		err := driver.TokenizeFile(input, output)
 		if err != nil {

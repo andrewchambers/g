@@ -109,6 +109,11 @@ type Constant struct {
 	Val int64
 }
 
+type Initializer struct {
+	SpanProvider
+	Sub []Node
+}
+
 type Ident struct {
 	SpanProvider
 	Val string

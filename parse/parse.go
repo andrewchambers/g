@@ -223,11 +223,32 @@ func (p *parser) parseType(allowEmpty bool) Node {
 }
 
 func (p *parser) parseArgList(f *FuncDecl) {
-	for p.curTok.Kind == IDENTIFIER {
-		name := p.curTok.Val
-		p.next()
-		t := p.parseType(false)
+loop:
+	for {
+		name := ""
+		var t Node
+		switch p.curTok.Kind {
+		case '*', '[', STRUCT, FUNC:
+			t = p.parseType(false)
+		case IDENTIFIER:
+			// Either its the var name, or a type alias.
+			// It depends on the comma...
+			name = p.curTok.Val
+			ta := &TypeAlias{}
+			ta.Span = p.curTok.Span
+			ta.Name = p.curTok.Val
+			p.next()
+			if p.curTok.Kind == ',' {
+				name = ""
+				t = ta
+			} else {
+				t = p.parseType(false)
+			}
+		default:
+			break loop
+		}
 		f.addArgument(name, t)
+
 		if p.curTok.Kind == ',' {
 			p.next()
 		}
@@ -526,6 +547,8 @@ func (p *parser) parsePrimaryExpression() Node {
 		newu.Expr = expr
 		newu.Span.End = expr.GetSpan().End
 		ret = newu
+	case '{':
+		ret = p.parseInitializer()
 	case IDENTIFIER:
 		v := &Ident{}
 		v.Val = p.curTok.Val
@@ -608,4 +631,18 @@ func (p *parser) parseSelector(l Node) *Selector {
 	sel.Span.End = p.curTok.Span.End
 	p.expect(IDENTIFIER)
 	return sel
+}
+
+func (p *parser) parseInitializer() *Initializer {
+	ret := &Initializer{}
+	ret.Span = p.curTok.Span
+	p.expect('{')
+	p.parseExpression()
+	for p.curTok.Kind == ',' {
+		p.expect(',')
+		p.parseExpression()
+	}
+	ret.Span.End = p.curTok.Span.End
+	p.expect('}')
+	return ret
 }
