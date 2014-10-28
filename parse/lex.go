@@ -346,7 +346,7 @@ func (l *lexer) skipUntilBlockCommentTerminator() {
 			l.lexError("unclosed block comment.")
 		}
 		if c == '\n' {
-		    l.maybeDoSemiHack()
+			l.maybeDoSemiHack()
 		}
 		if c == '*' {
 			closeBar, eof := l.readRune()
@@ -441,7 +441,7 @@ func (l *lexer) skipWhiteSpace() {
 	for {
 		r, _ := l.readRune()
 		if r == '\n' {
-		    l.maybeDoSemiHack()
+			l.maybeDoSemiHack()
 		}
 		if !isWhiteSpace(r) {
 			l.unreadRune()

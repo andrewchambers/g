@@ -77,7 +77,7 @@ func runSingleFileRetZero(t *testing.T, testpath string) (result testResult) {
 		return
 	}
 	tm := target.GetTarget()
-	err = driver.CompileFileToLLVM(tm, testpath, outfile)
+	err = driver.CompilePackageToLLVM(tm, testpath, outfile)
 	if err != nil {
 		result = makeFailedTestResult(testpath, "failed to compile file (%s)", err)
 		return
