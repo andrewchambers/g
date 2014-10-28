@@ -19,6 +19,22 @@ And more.
 
 G is not trying to compete with big languages like rust or C++. It just trying to be as close to C as possible while mostly simplifying, and improving things. It is still just portable assembly.
 
+
+# Status
+
+Currently undergoing large refactor so broken, look back later.
+
+# Build and test:
+[![Build Status](https://travis-ci.org/andrewchambers/g.svg?branch=master)](https://travis-ci.org/andrewchambers/g)
+
+install clang then run:
+
+```
+go get github.com/andrewchambers/g
+cd $GOPATH/src/andrewchambers/g
+go test ./...
+```
+
 # Examples (not all implemented):
 
 
@@ -180,21 +196,6 @@ func doSomething () (int,*char) {
     
     return 1,""
 }
-```
-
-# Status
-
-For a general idea of what currently works, look inside the gtestcases folder.
-
-# Build and test:
-[![Build Status](https://travis-ci.org/andrewchambers/g.svg?branch=master)](https://travis-ci.org/andrewchambers/g)
-
-install clang then run:
-
-```
-go get github.com/andrewchambers/g
-cd $GOPATH/src/andrewchambers/g
-go test ./...
 ```
 
 # brain storm
