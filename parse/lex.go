@@ -237,7 +237,7 @@ func (l *lexer) lex() {
 					for {
 						next, eof := l.readRune()
 						if next == '\n' || eof {
-							l.maybeDoSemiHack(next)
+							l.maybeDoSemiHack()
 							break
 						}
 					}
@@ -345,7 +345,9 @@ func (l *lexer) skipUntilBlockCommentTerminator() {
 		if eof {
 			l.lexError("unclosed block comment.")
 		}
-		l.maybeDoSemiHack(c)
+		if c == '\n' {
+		    l.maybeDoSemiHack()
+		}
 		if c == '*' {
 			closeBar, eof := l.readRune()
 			if eof {
@@ -428,8 +430,8 @@ func (l *lexer) readStringLiteral() {
 	l.sendTok(STRING, buff.String())
 }
 
-func (l *lexer) maybeDoSemiHack(r rune) {
-	if r == '\n' && l.semiHack {
+func (l *lexer) maybeDoSemiHack() {
+	if l.semiHack {
 		l.sendTok(';', ";")
 		l.semiHack = false
 	}
@@ -438,7 +440,9 @@ func (l *lexer) maybeDoSemiHack(r rune) {
 func (l *lexer) skipWhiteSpace() {
 	for {
 		r, _ := l.readRune()
-		l.maybeDoSemiHack(r)
+		if r == '\n' {
+		    l.maybeDoSemiHack()
+		}
 		if !isWhiteSpace(r) {
 			l.unreadRune()
 			break
