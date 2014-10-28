@@ -79,7 +79,7 @@ func (a *GAlias) Equals(other GType) bool {
 	if !ok {
 		return a.Type.Equals(other)
 	} else {
-	    return a.Type.Equals(o.Type)
+		return a.Type.Equals(o.Type)
 	}
 }
 

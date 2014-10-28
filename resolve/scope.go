@@ -6,12 +6,12 @@ import (
 )
 
 type scope interface {
-    declareSym(k string, s symbol) error
+	declareSym(k string, s symbol) error
 }
 
 type packageScope struct {
-    unresolved map[string] []lazySymbol
-    symkv  map[string]symbol
+	unresolved map[string][]lazySymbol
+	symkv      map[string]symbol
 }
 
 type localScope struct {
@@ -29,7 +29,7 @@ func newLocalScope(parent scope) scope {
 func (s *localScope) declareSym(k string, sym symbol) error {
 	_, ok := s.symkv[k]
 	if ok {
-		return fmt.Errorf("ident %s already defined",k)
+		return fmt.Errorf("ident %s already defined", k)
 	}
 	s.symkv[k] = sym
 	return nil

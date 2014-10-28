@@ -7,7 +7,7 @@ const (
 	PACKAGE
 )
 
-type symbol interface {}
+type symbol interface{}
 
 type lazySymbol struct {
 	s *symbol
