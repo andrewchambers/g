@@ -6,6 +6,7 @@ import (
 	"github.com/andrewchambers/g/emit"
 	"github.com/andrewchambers/g/parse"
 	"github.com/andrewchambers/g/target"
+	"github.com/andrewchambers/g/util"
 	"io"
 	"io/ioutil"
 	"os"
@@ -50,6 +51,26 @@ func GetPackageName(sourceFile string) (string, error) {
 		return "", fmt.Errorf("malformed package name")
 	}
 	return tok.Val, nil
+}
+
+func ParseFolder(folder string) ([]*parse.File, error) {
+	rfile, rerr := make([]*parse.File, 0, 16), make(util.ErrorList, 0, 16)
+	filePaths, err := util.GFilesInDir(folder)
+	if err != nil {
+		return rfile, err
+	}
+	for _, path := range filePaths {
+		f, err := ParseFile(path)
+		if err != nil {
+			rerr = append(rerr, err)
+		} else {
+			rfile = append(rfile, f)
+		}
+	}
+	if len(rerr) == 0 {
+		return rfile, nil
+	}
+	return rfile, rerr
 }
 
 func ParseFile(sourceFile string) (*parse.File, error) {

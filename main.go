@@ -6,6 +6,7 @@ import (
 	"github.com/andrewchambers/g/driver"
 	"github.com/andrewchambers/g/parse"
 	"github.com/andrewchambers/g/target"
+	"github.com/andrewchambers/g/util"
 	"io"
 	"os"
 	"runtime/pprof"
@@ -61,8 +62,13 @@ func main() {
 	}
 
 	input := flag.Args()[0]
+
+	isInputDir, err := util.IsDirectory(input)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error with input. %s\n", err)
+	}
+
 	var output io.WriteCloser
-	var err error
 
 	if *outputPath == "-" {
 		output = os.Stdout
@@ -82,16 +88,32 @@ func main() {
 			os.Exit(1)
 		}
 	} else if *parseOnly {
-		ast, err := driver.ParseFile(input)
+		var astList []*parse.File
+		var err error
+		if isInputDir {
+			astList, err = driver.ParseFolder(input)
+		} else {
+			var ast *parse.File
+			ast, err = driver.ParseFile(input)
+			astList = []*parse.File{ast}
+		}
 		if err != nil {
 			fmt.Println(err)
 			fmt.Println("parsing failed.")
 			os.Exit(1)
 		}
-		parse.DebugDump(output, ast)
+		for _, ast := range astList {
+			parse.DebugDump(output, ast)
+		}
 	} else {
 		t := target.GetTarget()
-		err := driver.CompileFileToLLVM(t, input, output)
+		var err error
+		if isInputDir {
+			err = fmt.Errorf("unimplemented, compile package...")
+			// err = driver.CompilePackageToLLVM(t, input, output)
+		} else {
+			err = driver.CompileFileToLLVM(t, input, output)
+		}
 		if err != nil {
 			fmt.Println(err)
 			fmt.Println("compilation to llvm failed.")
