@@ -1,4 +1,4 @@
-package emit
+package resolve
 
 import (
 	"fmt"
@@ -15,8 +15,12 @@ type GStruct struct {
 	Types []GType
 }
 
+type GAlias struct {
+	Name string
+	Type GType
+}
+
 type GInt struct {
-	Alias  string
 	Bits   uint
 	Signed bool
 }
@@ -42,15 +46,15 @@ type GConstant struct {
 }
 
 var builtinVoidGType GType = &GVoid{}
-var builtinBoolGType GType = &GInt{"bool", 1, false}
-var builtinInt8GType GType = &GInt{"int8", 8, true}
-var builtinInt16GType GType = &GInt{"int16", 16, true}
-var builtinInt32GType GType = &GInt{"int32", 32, true}
-var builtinInt64GType GType = &GInt{"int64", 64, true}
-var builtinUInt8GType GType = &GInt{"int8", 8, false}
-var builtinUInt16GType GType = &GInt{"uint16", 16, false}
-var builtinUInt32GType GType = &GInt{"uint32", 32, false}
-var builtinUInt64GType GType = &GInt{"uint64", 64, false}
+var builtinBoolGType GType = &GInt{1, false}
+var builtinInt8GType GType = &GInt{8, true}
+var builtinInt16GType GType = &GInt{16, true}
+var builtinInt32GType GType = &GInt{32, true}
+var builtinInt64GType GType = &GInt{64, true}
+var builtinUInt8GType GType = &GInt{8, false}
+var builtinUInt16GType GType = &GInt{16, false}
+var builtinUInt32GType GType = &GInt{32, false}
+var builtinUInt64GType GType = &GInt{64, false}
 
 func getDefaultIntType(tm target.TargetMachine) GType {
 	switch tm.DefaultIntBitWidth() {
@@ -68,6 +72,19 @@ func isBool(t GType) bool {
 		return v.Bits == 1
 	}
 	return false
+}
+
+func (a *GAlias) Equals(other GType) bool {
+	o, ok := other.(*GAlias)
+	if !ok {
+		return a.Type.Equals(other)
+	} else {
+	    return a.Type.Equals(o.Type)
+	}
+}
+
+func (a *GAlias) String() string {
+	return a.Name
 }
 
 func (a *GArray) Equals(other GType) bool {
@@ -147,10 +164,6 @@ func (s *GStruct) Equals(other GType) bool {
 }
 
 func (i *GInt) String() string {
-	if i.Alias != "" {
-		return i.Alias
-	}
-
 	if i.Signed {
 		switch i.Bits {
 		case 64:

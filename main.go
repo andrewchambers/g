@@ -107,13 +107,7 @@ func main() {
 		}
 	} else {
 		t := target.GetTarget()
-		var err error
-		if isInputDir {
-			err = fmt.Errorf("unimplemented, compile package...")
-			// err = driver.CompilePackageToLLVM(t, input, output)
-		} else {
-			err = driver.CompileFileToLLVM(t, input, output)
-		}
+		err := driver.CompilePackageToLLVM(t, input, output)
 		if err != nil {
 			fmt.Println(err)
 			fmt.Println("compilation to llvm failed.")
