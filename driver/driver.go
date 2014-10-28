@@ -86,8 +86,7 @@ func ParseFile(sourceFile string) (*parse.File, error) {
 	return ast, nil
 }
 
-func CompilePackageToLLVM(machine target.TargetMachine, sourcePackage string, out io.WriteCloser) error {
-	defer out.Close()
+func CompilePackageToLLVM(machine target.TargetMachine, sourcePackage string, out io.Writer) error {
 	ast, err := ParseFolder(sourcePackage)
 	if err != nil {
 		return err

@@ -196,9 +196,9 @@ func (p *parser) parseType(allowEmpty bool) Node {
 	case STRUCT:
 		return p.parseStruct()
 	case IDENTIFIER:
-		ret := &TypeAlias{}
+		ret := &Ident{}
 		ret.Span = p.curTok.Span
-		ret.Name = p.curTok.Val
+		ret.Val = p.curTok.Val
 		p.next()
 		return ret
 	case '*':
@@ -230,9 +230,9 @@ loop:
 			// Either its the var name, or a type alias.
 			// It depends on the comma...
 			name = p.curTok.Val
-			ta := &TypeAlias{}
+			ta := &Ident{}
 			ta.Span = p.curTok.Span
-			ta.Name = p.curTok.Val
+			ta.Val = p.curTok.Val
 			p.next()
 			if p.curTok.Kind == ',' {
 				name = ""

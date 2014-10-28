@@ -51,11 +51,6 @@ type Call struct {
 	Args     []Node
 }
 
-type TypeAlias struct {
-	SpanProvider
-	Name string
-}
-
 type PointerTo struct {
 	SpanProvider
 	PointsTo Node
@@ -223,6 +218,10 @@ func debugDump(d int, w io.Writer, n Node) {
 	switch n := n.(type) {
 	case *File:
 		p(d+0, "File:\n")
+		p(d+2, "TypeDecls:\n")
+		for _, td := range n.TypeDecls {
+			debugDump(d+4, w, td)
+		}
 		p(d+2, "FuncDecls:\n")
 		for _, fd := range n.FuncDecls {
 			debugDump(d+4, w, fd)
@@ -234,6 +233,23 @@ func debugDump(d int, w io.Writer, n Node) {
 		for _, n := range n.Body {
 			debugDump(d+4, w, n)
 		}
+	case *TypeDecl:
+		p(d+0, "TypeDecl:\n")
+		p(d+2, "Name:\n")
+		p(d+4, "%s\n", n.Name)
+		p(d+2, "Type:\n")
+		debugDump(d+4, w, n.Type)
+	case *Struct:
+		p(d+0, "Struct:\n")
+		for idx := range n.Names {
+			p(d+2, "Member: %s\n", n.Names[idx])
+			debugDump(d+4, w, n.Types[idx])
+		}
+	case *PointerTo:
+		p(d+0, "PointerTo:\n")
+		debugDump(d+2, w, n.PointsTo)
+	case *Ident:
+		p(d+0, "Ident: %s\n", n.Val)
 	case *ExpressionStatement:
 		p(d+0, "ExpressionStatement:\n")
 		debugDump(d+2, w, n.Expr)

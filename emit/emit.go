@@ -8,9 +8,7 @@ import (
 )
 
 func EmitModule(machine target.TargetMachine, out *bufio.Writer, files []*parse.File) error {
-
 	r := resolve.New()
 	r.ResolvePackage(files)
-
 	return nil
 }

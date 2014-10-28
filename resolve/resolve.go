@@ -14,15 +14,8 @@ type Resolver struct {
 
 func New() *Resolver {
 	ret := &Resolver{}
+	ret.ps = newPackageScope()
 	return ret
-}
-
-func (r *Resolver) pushScope() {
-
-}
-
-func (r *Resolver) popScope() {
-
 }
 
 func (r *Resolver) ResolvePackage(files []*parse.File) {
@@ -31,11 +24,7 @@ func (r *Resolver) ResolvePackage(files []*parse.File) {
 
 	for _, f := range files {
 		for _, fd := range f.FuncDecls {
-			r.pushScope()
-			// XXX cache file scope from before?
-			r.resolveImports(f)
 			r.resolveFuncDecl(fd)
-			r.popScope()
 		}
 	}
 }
@@ -49,12 +38,9 @@ func (r *Resolver) resolvePackageScope(files []*parse.File) {
 		r.popScope()
 	}
 
-	/*
-	   if len(r.ps.unresolvedSymbols) != 0 {
-	       panic("unresolved symbols...")
-	   }
-	*/
-
+	if len(r.ps.unresolved) != 0 {
+		panic("unresolved symbols...")
+	}
 }
 
 func (r *Resolver) resolveImports(f *parse.File) {
@@ -62,23 +48,74 @@ func (r *Resolver) resolveImports(f *parse.File) {
 }
 
 func (r *Resolver) resolvePackageLevel(f *parse.File) {
-	for _, _ = range f.TypeDecls {
-		//ty := r.astNodeToGType(td.Type)
-		//r.ps.DeclareSym(td.Name,nil)
+	for _, td := range f.TypeDecls {
+		r.resolveType(r.ps, td.Type)
+		ts := &typeSymbol{td}
+		err := r.ps.declareSym(td.Name, ts)
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	/*
-	   for _, fd := range f.FuncDecls {
-	       ty := r.astNodeToGType(fd)
-	       r.ps.DeclareSym(fd.Name,nil)
-	   }
-	*/
+	for _, fd := range f.FuncDecls {
+		fs := &funcSymbol{fd}
+		err := r.ps.declareSym(fd.Name, fs)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func (r *Resolver) resolveType(sc scope, n parse.Node) {
+	switch n := n.(type) {
+	case *parse.Ident:
+		_, err := sc.lookupSym(n.Val)
+		if err != nil {
+			panic(err)
+		}
+	case *parse.Struct:
+		for idx := range n.Types {
+			r.resolveType(sc, n.Types[idx])
+		}
+	case *parse.PointerTo:
+		r.resolveType(sc, n.PointsTo)
+	default:
+		panic(n)
+	}
+}
+
+func (r *Resolver) pushScope() {
+	r.ls = newLocalScope(r.ls)
+}
+
+func (r *Resolver) popScope() {
+	r.ls = r.ls.parent.(*localScope)
 }
 
 func (r *Resolver) resolveFuncDecl(fd *parse.FuncDecl) {
+	funcScope := newLocalScope(r.ps)
+	r.ls = funcScope
 
+	for _, n := range fd.Body {
+		r.resolveFuncNode(n)
+	}
+
+	if r.ls != funcScope {
+		panic("internal error")
+	}
 }
 
-func (r *Resolver) astNodeToGType(n parse.Node) GType {
-	return nil
+func (r *Resolver) resolveFuncNode(n parse.Node) {
+	switch n := n.(type) {
+	case *parse.VarDecl:
+	case *parse.Assign:
+	case *parse.Binop:
+	case *parse.Unop:
+	case *parse.For:
+	case *parse.If:
+	case *parse.ExpressionStatement:
+	case *parse.Call:
+	default:
+		panic(n)
+	}
 }
