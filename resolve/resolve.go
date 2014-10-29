@@ -10,6 +10,7 @@ import (
 type Resolver struct {
 	ps *packageScope
 	ls *localScope
+	kv map[*parse.Ident]symbol
 }
 
 func New() *Resolver {
@@ -97,7 +98,7 @@ func (r *Resolver) resolveFuncDecl(fd *parse.FuncDecl) {
 	r.ls = funcScope
 
 	for _, n := range fd.Body {
-		r.resolveFuncNode(n)
+		r.resolveFuncBodyNode(n)
 	}
 
 	if r.ls != funcScope {
@@ -105,16 +106,62 @@ func (r *Resolver) resolveFuncDecl(fd *parse.FuncDecl) {
 	}
 }
 
-func (r *Resolver) resolveFuncNode(n parse.Node) {
+// Walk the function tree handling scopes and definitions while mapping ident
+// nodes to symbol objects.
+
+func (r *Resolver) resolveFuncBodyNode(n parse.Node) {
+
+	if n == nil {
+		return
+	}
+
 	switch n := n.(type) {
 	case *parse.VarDecl:
+		err := r.ls.declareSym(n.Name, &localSymbol{n})
+		if err != nil {
+			panic(err)
+		}
+	case *parse.Ident:
+		_, err := r.ls.lookupSym(n.Val)
+		if err != nil {
+			panic(err)
+		}
 	case *parse.Assign:
+		r.resolveFuncBodyNode(n.L)
+		r.resolveFuncBodyNode(n.R)
 	case *parse.Binop:
+		r.resolveFuncBodyNode(n.L)
+		r.resolveFuncBodyNode(n.R)
 	case *parse.Unop:
+		r.resolveFuncBodyNode(n.Expr)
 	case *parse.For:
+		r.pushScope()
+		r.resolveFuncBodyNode(n.Init)
+		r.resolveFuncBodyNode(n.Cond)
+		r.resolveFuncBodyNode(n.Step)
+		for _, sub := range n.Body {
+			r.resolveFuncBodyNode(sub)
+		}
+		r.popScope()
 	case *parse.If:
+		r.resolveFuncBodyNode(n.Cond)
+		r.pushScope()
+		for _, sub := range n.Body {
+			r.resolveFuncBodyNode(sub)
+		}
+		r.popScope()
+		r.pushScope()
+		for _, sub := range n.Els {
+			r.resolveFuncBodyNode(sub)
+		}
+		r.popScope()
 	case *parse.ExpressionStatement:
+		r.resolveFuncBodyNode(n.Expr)
 	case *parse.Call:
+		r.resolveFuncBodyNode(n.FuncLike)
+		for _, arg := range n.Args {
+			r.resolveFuncBodyNode(arg)
+		}
 	default:
 		panic(n)
 	}

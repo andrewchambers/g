@@ -22,6 +22,7 @@ type typeSymbol struct {
 }
 
 type localSymbol struct {
+	Decl *parse.VarDecl
 }
 
 type constSymbol struct {
