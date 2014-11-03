@@ -15,7 +15,7 @@ type GStruct struct {
 	Types []GType
 }
 
-type GAlias struct {
+type GNamedType struct {
 	Name string
 	Type GType
 }
@@ -74,8 +74,8 @@ func isBool(t GType) bool {
 	return false
 }
 
-func (a *GAlias) Equals(other GType) bool {
-	o, ok := other.(*GAlias)
+func (a *GNamedType) Equals(other GType) bool {
+	o, ok := other.(*GNamedType)
 	if !ok {
 		return a.Type.Equals(other)
 	} else {
@@ -83,7 +83,7 @@ func (a *GAlias) Equals(other GType) bool {
 	}
 }
 
-func (a *GAlias) String() string {
+func (a *GNamedType) String() string {
 	return a.Name
 }
 
