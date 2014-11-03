@@ -126,15 +126,22 @@ Saner left to right declaration syntax:
 
 # Tentative examples
 
-Refcount type or types?:
+Typed new keyword?
+
+```
+ var x = new int
+ var x = new [20]int
+```
+
+Refcount type or types (atomic ref for thread safety)?:
 
 ```
 // No idea on syntax
-func newRef () @Foo {
-    var r @Foo = NewRef(malloc(Foo,sizeof(Foo)),free)
+func newRef () ref Foo {
+    var r = newref Foo
     return r
 }
-// What does index into ref do, what about ref arith?
+//  what about ref arith?
 XXX
 ```
 
