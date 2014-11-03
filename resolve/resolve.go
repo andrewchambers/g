@@ -49,13 +49,23 @@ func (r *Resolver) resolveImports(f *parse.File) {
 }
 
 func (r *Resolver) resolvePackageLevel(f *parse.File) {
+	
+	var tSymbols []*typeSymbol
+	
 	for _, td := range f.TypeDecls {
 		r.resolveType(r.ps, td.Type)
-		ts := &typeSymbol{td}
+		ts := &typeSymbol{td,nil}
+		tSymbols = append(tSymbols,ts)
 		err := r.ps.declareSym(td.Name, ts)
 		if err != nil {
 			panic(err)
 		}
+	}
+	
+	// Now all package level symbols should be resolved, we can convert
+	// Them into actual GType instances.
+	for _,ts := range tSymbols {
+	    ts.Type = typeDeclToGNamedType(td.Decl)
 	}
 
 	for _, fd := range f.FuncDecls {

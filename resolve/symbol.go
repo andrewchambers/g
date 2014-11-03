@@ -19,6 +19,7 @@ type lazySymbol struct {
 
 type typeSymbol struct {
 	Decl *parse.TypeDecl
+	Type GType
 }
 
 type localSymbol struct {
