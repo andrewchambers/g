@@ -125,6 +125,20 @@ Saner left to right declaration syntax:
 ```
 
 # Tentative examples
+
+Refcount type or types?:
+
+```
+// No idea on syntax
+func newRef () @Foo {
+    var r @Foo = NewRef(malloc(Foo,sizeof(Foo)),free)
+    return r
+}
+// What does index into ref do, what about ref arith?
+XXX
+```
+
+
 Tagged union perhaps? might be too much, when people can just do it themselves.
 The problem this solves is explicitly catching all cases if requirements change.
 ```
@@ -185,7 +199,7 @@ func doSomething () (int,*char) {
     if p == nil {
         return -1,"malloc failed"
     }
-    //After a defer block is executed, the contained block will run once on function return.
+    //After a defer block is executed, the contained block will run on containing scope exit.
     defer {
         free((*void)p)
     }
