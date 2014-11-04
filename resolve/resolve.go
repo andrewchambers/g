@@ -31,42 +31,22 @@ func (r *Resolver) ResolvePackage(files []*parse.File) {
 }
 
 func (r *Resolver) resolvePackageScope(files []*parse.File) {
-	for _, f := range files {
-		// Push the file scope
-		r.pushScope()
-		r.resolveImports(f)
-		r.resolvePackageLevel(f)
-		r.popScope()
-	}
-
-	if len(r.ps.unresolved) != 0 {
-		panic("unresolved symbols...")
-	}
-}
-
-func (r *Resolver) resolveImports(f *parse.File) {
-
+	
+	var allTypeDecls [] *parse.TypeDecl
+    for _,f := range files {
+        for _,td := range f.TypeDecls {
+            allTypeDecls = append(allTypeDecls, td)
+        }
+    }	
+    
+    _, err := getTopLevelNamedTypes(allTypeDecls)
+    if err != nil {
+        panic(err)
+    }
+    
 }
 
 func (r *Resolver) resolvePackageLevel(f *parse.File) {
-	
-	var tSymbols []*typeSymbol
-	
-	for _, td := range f.TypeDecls {
-		r.resolveType(r.ps, td.Type)
-		ts := &typeSymbol{td,nil}
-		tSymbols = append(tSymbols,ts)
-		err := r.ps.declareSym(td.Name, ts)
-		if err != nil {
-			panic(err)
-		}
-	}
-	
-	// Now all package level symbols should be resolved, we can convert
-	// Them into actual GType instances.
-	for _,ts := range tSymbols {
-	    ts.Type = typeDeclToGNamedType(td.Decl)
-	}
 
 	for _, fd := range f.FuncDecls {
 		fs := &funcSymbol{fd}

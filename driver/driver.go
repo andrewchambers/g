@@ -9,6 +9,7 @@ import (
 	"github.com/andrewchambers/g/util"
 	"io"
 	"io/ioutil"
+	"bytes"
 	"os"
 	"os/exec"
 )
@@ -79,6 +80,16 @@ func ParseFile(sourceFile string) (*parse.File, error) {
 		return nil, fmt.Errorf("Failed to open source file %s for lexing: %s\n", sourceFile, err)
 	}
 	tokChan, _ := parse.Lex(sourceFile, f)
+	ast, err := parse.Parse(tokChan)
+	if err != nil {
+		return nil, fmt.Errorf("parse error: %s", err)
+	}
+	return ast, nil
+}
+
+func ParseString(source string) (*parse.File, error) {
+	b := bytes.NewBufferString(source)
+	tokChan, _ := parse.Lex("unknown",b)
 	ast, err := parse.Parse(tokChan)
 	if err != nil {
 		return nil, fmt.Errorf("parse error: %s", err)

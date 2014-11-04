@@ -3,6 +3,7 @@ package resolve
 import (
 	"fmt"
 	"github.com/andrewchambers/g/target"
+	"github.com/andrewchambers/g/parse"
 )
 
 type GType interface {
@@ -204,4 +205,47 @@ func (f *GFunc) Equals(other GType) bool {
 
 func (f *GFunc) String() string {
 	return "function"
+}
+
+
+
+type typeLookupFunc func (*parse.Ident) (*GNamedType,error)
+
+// Convert an AST node to a GType.
+// Requires a function to convert idents into named types.
+
+func astNodeToGType(lookup typeLookupFunc, n parse.Node) (GType,error) {
+	switch n := n.(type) {
+	case *parse.Ident:
+	    return lookup(n)
+	case *parse.PointerTo:
+		t, err := astNodeToGType(lookup, n.PointsTo)
+		if err != nil {
+			return nil, err
+		}
+		ret := &GPointer{PointsTo: t}
+		return ret, nil
+	case *parse.Struct:
+	ret := &GStruct{}
+	    for idx, name := range n.Names {
+		    t, err := astNodeToGType(lookup, n.Types[idx])
+		    if err != nil {
+			    return nil, err
+		    }
+		    ret.Names = append(ret.Names, name)
+		    ret.Types = append(ret.Types, t)
+	    }
+	    return ret, nil
+	case *parse.ArrayOf:
+		t, err := astNodeToGType(lookup,n.SubType)
+		if err != nil {
+			return nil, err
+		}
+		ret := &GArray{}
+		ret.Dim = n.Dim
+		ret.SubType = t
+		return ret, nil
+	default:
+		return nil, fmt.Errorf("invalid type %v", n)
+	}  
 }
